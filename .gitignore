@@ -1,0 +1,5 @@
+*.docx
+.idea
+*.plx
+venv
+*.yaml
