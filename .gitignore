@@ -1,5 +1,8 @@
 *.docx
-.idea
 *.plx
-venv
+*.pyc
+*.txt
 *.yaml
+.idea
+.vscode
+venv
