@@ -2,6 +2,7 @@
 *.plx
 *.pyc
 *.txt
+*.xlsx
 *.yaml
 .idea
 .vscode
