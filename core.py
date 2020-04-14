@@ -13,6 +13,8 @@ NAMESPACES = {
     'mmisdb': 'http://tempuri.org/dsMMISDB.xsd',
 }
 
+HOURS_PER_CREDIT = 36
+
 HT_WORK = '1'
 
 WT_LECTURE = 'Лек'
@@ -131,11 +133,50 @@ class Subject(Base):
         self.semesters = dict()
         self.competencies = set()
 
+    def get_controls(self) -> str:
+        result = set()
+        for semester in self.semesters.values():
+            for control in semester.control:
+                if control == CT_COURSEWORK:
+                    result.add('курсовой проект')
+                if control == CT_EXAM:
+                    result.add('экзамен')
+                if control == CT_CREDIT:
+                    result.add('зачет')
+                if control == CT_CREDIT_GRADE:
+                    result.add('зачет с оценкой')
+        return (', '.join(result)).capitalize()
+
+    def get_courses(self) -> str:
+        semesters = [str((semester + 1) // 2) for semester in self.semesters.keys()]
+        return ', '.join(sorted(set(semesters)))
+
+    def get_hours(self, attr) -> str:
+        hours = sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
+        return '—' if hours == 0 else str(hours)
+
+    def get_hours_123(self) -> str:
+        hours1 = sum([semester.lectures for semester in self.semesters.values()])
+        hours21 = sum([semester.practices for semester in self.semesters.values()])
+        hours22 = sum([semester.labworks for semester in self.semesters.values()])
+        hours3 = sum([semester.controls for semester in self.semesters.values()])
+        hours = hours1 + hours21 + hours22 + hours3
+        return '—' if hours == 0 else str(hours)
+
+    def get_hours_2(self) -> str:
+        hours21 = sum([semester.practices for semester in self.semesters.values()])
+        hours22 = sum([semester.labworks for semester in self.semesters.values()])
+        hours = hours21 + hours22
+        return '—' if hours == 0 else str(hours)
+
     def get_semesters(self) -> str:
         semesters = [str(semester) for semester in self.semesters.keys()]
-        return ' '.join(semesters)
+        return ', '.join(sorted(semesters))
 
     def get_total_credits(self) -> int:
+        return self.get_total_hours() // HOURS_PER_CREDIT
+
+    def get_total_hours(self) -> int:
         result = 0
         for semester in self.semesters.values():
             result += semester.lectures + semester.practices + semester.labworks

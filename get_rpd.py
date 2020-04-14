@@ -22,81 +22,6 @@ def add_table_cell(table, row, col, style, text):
         cell.paragraphs[0].style = style
 
 
-# def add_extraction_3pp(doc, context):
-#     """ Add education plan data """
-#     course = context['course']
-#
-#     table = doc.add_table(rows=15, cols=3, style='Table Grid')
-#     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-#     table.autofit = True
-#
-#     set_table_cell(table, 0, 0, 'left', 'Индекс и название дисциплины по учебному плану')
-#     set_table_cell(table, 0, 1, 'center', '{course.code} {course.name}'.format(**context))
-#     table.cell(0, 1).merge(table.cell(0, 2))
-#
-#     set_table_cell(table, 1, 0, 'left', 'Курс изучения')
-#     set_table_cell(table, 1, 1, 'center', ', '.join(course.get_years()))
-#     table.cell(1, 1).merge(table.cell(1, 2))
-#
-#     set_table_cell(table, 2, 0, 'left', 'Семестр(ы) изучения')
-#     set_table_cell(table, 2, 1, 'center', ', '.join(course.get_semesters()))
-#     table.cell(2, 1).merge(table.cell(2, 2))
-#
-#     controls = course.get_controls()
-#     set_table_cell(table, 3, 0, 'left', 'Форма промежуточной аттестации (зачет/экзамен)')
-#     set_table_cell(table, 3, 1, 'center', ', '.join(controls))
-#     table.cell(3, 1).merge(table.cell(3, 2))
-#
-#     set_table_cell(table, 4, 0, 'left', 'Курсовой проект/ курсовая работа (указать вид работы при наличии в учебном '
-#                                         'плане), семестр выполнения')
-#     set_table_cell(table, 4, 1, 'center', 'курсовой проект' if 'курсовой проект' in controls else '—')
-#     table.cell(4, 1).merge(table.cell(4, 2))
-#
-#     total_credits = course.get_total_credits()
-#     set_table_cell(table, 5, 0, 'left', 'Трудоемкость (в ЗЕТ)')
-#     set_table_cell(table, 5, 1, 'center', str(total_credits))
-#     table.cell(5, 1).merge(table.cell(5, 2))
-#
-#     total_hours = course.get_total_hours()
-#     set_table_cell(table, 6, 0, 'left', 'Трудоемкость (в часах) (сумма строк №1,2,3), в т. ч.:')
-#     set_table_cell(table, 6, 1, 'center', str(total_hours))
-#     table.cell(6, 1).merge(table.cell(6, 2))
-#
-#     set_table_cell(table, 7, 0, 'left', '№1. Контактная работа обучающихся с преподавателем (КР), в часах:')
-#     set_table_cell(table, 7, 1, 'center', 'Объем аудиторной работы, в часах')
-#     set_table_cell(table, 7, 2, 'center', 'В т. ч. с применением ДОТ или ЭО, в часах')
-#
-#     set_table_cell(table, 8, 0, 'left', 'Объем работы (в часах) (1.1.+1.2.+1.3.):')
-#     set_table_cell(table, 8, 1, 'center', str(course.get_hours('lectures') + course.get_hours('labworks') +
-#     course.get_hours('practices') + course.get_hours('controls')))
-#     set_table_cell(table, 8, 2, 'center', '—')
-#
-#     set_table_cell(table, 9, 0, 'left', '1.1. Занятия лекционного типа (лекции)')
-#     set_table_cell(table, 9, 1, 'center', str(course.get_hours('lectures')))
-#     set_table_cell(table, 9, 2, 'center', '—')
-#
-#     set_table_cell(table, 10, 0, 'left', '1.2. Занятия семинарского типа, всего, в т. ч.:')
-#     set_table_cell(table, 10, 1, 'center', str(course.get_hours('labworks') + course.get_hours('practices')))
-#     set_table_cell(table, 10, 2, 'center', '—')
-#
-#     set_table_cell(table, 11, 0, 'left', '- семинары (практические занятия, коллоквиумы и т. п.)')
-#     set_table_cell(table, 11, 1, 'center', str(course.get_hours('practices')))
-#     set_table_cell(table, 11, 2, 'center', '—')
-#
-#     set_table_cell(table, 12, 0, 'left', '1.3. КСР (контроль самостоятельной работы, консультации)')
-#     set_table_cell(table, 12, 1, 'center', str(course.get_hours('controls')))
-#     set_table_cell(table, 12, 2, 'center', '—')
-#
-#     set_table_cell(table, 13, 0, 'left', '№2. Самостоятельная работа обучающихся (СРС) (в часах)')
-#     set_table_cell(table, 13, 1, 'center', str(course.get_hours('homeworks')))
-#     table.cell(13, 1).merge(table.cell(13, 2))
-#
-#     exams = course.get_hours('exams')
-#     set_table_cell(table, 14, 0, 'left', '№3. Количество часов на экзамен (при наличии экзамена в учебном плане)')
-#     set_table_cell(table, 14, 1, 'center', str(exams) if exams else '—')
-#     table.cell(14, 1).merge(table.cell(14, 2))
-
-
 def check_args() -> None:
     """ Проверка аргументов командной строки """
     if len(sys.argv) != 3:
@@ -135,7 +60,7 @@ def get_template() -> DocxTemplate:
     return template
 
 
-def prepare_template(template: DocxTemplate, context: dict) -> None:
+def add_competencies(template: DocxTemplate, context: dict) -> None:
     """ Готовим шаблон РПД к работе """
     docx = template.get_docx()
     table = docx.tables[1]
@@ -233,7 +158,7 @@ def main() -> None:
         'links_before': links_before,
         'links_after': links_after,
     }
-    prepare_template(template, context)
+    add_competencies(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 
