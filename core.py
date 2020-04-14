@@ -1,7 +1,7 @@
 """ Базовые классы """
 
 from dataclasses import dataclass
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -286,6 +286,33 @@ class EducationPlan:
             subject = self.subject_keys[sub_elem.get('КодСтроки')]
             subject.competencies.add(competence.code)
 
+    def find_subject(self, course_names: List[Set[str]]) -> Subject:
+        """ Ищем дисциплину в учебном плане """
+        result = None
+        for subject in self.subject_keys.values():
+            subject_names = set(subject.name.lower().split())
+            for names in course_names:
+                if names <= subject_names:
+                    result = subject
+                    break
+        return result
+
+    def find_dependencies(self, subject: Subject, course: 'Course') -> Tuple[str, str]:
+        """ Ищем зависимости """
+        semesters = subject.semesters.keys()
+        first, last = min(semesters), max(semesters)
+        before, after = set(), set()
+        for cur_subj in self.subject_keys.values():
+            subject_names = set(cur_subj.name.lower().split())
+            for names in course.links:
+                if names <= subject_names:
+                    semesters = cur_subj.semesters.keys()
+                    if max(semesters) < first:
+                        before.add('%s %s' % (cur_subj.code, cur_subj.name))
+                    if last < min(semesters):
+                        after.add('%s %s' % (cur_subj.code, cur_subj.name))
+        return ', '.join(before), ', '.join(after)
+
 
 @dataclass
 class Course:
@@ -300,7 +327,8 @@ class Course:
     abilities: List[str]
     skills: List[str]
     links: List[Set[str]]
-    assessment = List[str]
+    assessment: List[str]
+    themes: List[Dict[str, str]]
 
     def __init__(self, filename: str):
         with open(filename, encoding='UTF-8') as input_file:
@@ -318,3 +346,4 @@ class Course:
         self.skills = data['владеть']
         self.links = [set(name) for name in data['связи']]
         self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
+        self.themes = data['темы']

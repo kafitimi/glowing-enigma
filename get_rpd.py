@@ -2,7 +2,6 @@
 
 import sys
 from copy import deepcopy
-from typing import List, Set, Tuple
 
 from docxtpl import DocxTemplate
 
@@ -49,6 +48,14 @@ def get_plan(plan_filename: str) -> EducationPlan:
     return plan
 
 
+def get_subject(plan:EducationPlan, course: Course) -> Subject:
+    result = plan.find_subject(course.names)
+    if result is None:
+        print('Не могу найти подходящую дисциплину в учебном плане')
+        sys.exit()
+    return result
+
+
 def get_template() -> DocxTemplate:
     """ Читаем шаблон РПД """
     template_filename = 'rpd.docx'
@@ -73,8 +80,8 @@ def add_competencies(template: DocxTemplate, context: dict) -> None:
         i += 1
 
         competence = context['plan'].competence_codes[code]
-        add_table_cell(table, i, 0, 'Table Heading', '{category}'.format(**competence))
-        add_table_cell(table, i, 1, 'Table Contents', '{code} {description}'.format(**competence))
+        add_table_cell(table, i, 0, 'Table Heading', competence.category)
+        add_table_cell(table, i, 1, 'Table Contents', competence.code + ' ' + competence.description)
         add_table_cell(table, i, 4, 'Table Heading', context['course'].assessment)
 
         for ind_code in sorted(competence.indicator_codes):
@@ -95,45 +102,13 @@ def add_competencies(template: DocxTemplate, context: dict) -> None:
     add_study_results('skills', 'Владеть:')
 
 
-def find_subject(plan: EducationPlan, course_names: List[Set[str]]) -> Subject:
-    """ Ищем дисциплину в учебном плане """
-    result = None
-    for subject in plan.subject_keys.values():
-        subject_names = set(subject.name.lower().split())
-        for names in course_names:
-            if names <= subject_names:
-                result = subject
-                break
-    if result is None:
-        print('Не могу найти подходящую дисциплину в учебном плане')
-        sys.exit()
-    return result
-
-
-def find_dependencies(plan: EducationPlan, subject: Subject, course: Course) -> Tuple[str, str]:
-    """ Ищем зависимости """
-    semesters = subject.semesters.keys()
-    first, last = min(semesters), max(semesters)
-    before, after = set(), set()
-    for cur_subj in plan.subject_keys.values():
-        subject_names = set(cur_subj.name.lower().split())
-        for names in course.links:
-            if names <= subject_names:
-                semesters = cur_subj.semesters.keys()
-                if max(semesters) < first:
-                    before.add('%s %s' % (cur_subj.code, cur_subj.name))
-                if last < min(semesters):
-                    after.add('%s %s' % (cur_subj.code, cur_subj.name))
-    return ', '.join(before), ', '.join(after)
-
-
 def main() -> None:
     """ Точка входа """
     check_args()
     plan = get_plan(sys.argv[1])
     course = get_course(sys.argv[2])
-    subject = find_subject(plan, course.names)
-    links_before, links_after = find_dependencies(plan, subject, course)
+    subject = get_subject(plan, course)
+    links_before, links_after = plan.find_dependencies(subject, course)
     template = get_template()
     context = {
         'course': course,
