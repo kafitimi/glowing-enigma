@@ -4,6 +4,7 @@ import sys
 import os
 from core import Competence, EducationPlan, Subject
 
+
 def main(plan_filename: str) -> None:
     """ Точка входа """
     plan = EducationPlan(plan_filename)

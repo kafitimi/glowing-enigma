@@ -1,9 +1,10 @@
 """ Базовые классы """
 
+from dataclasses import dataclass
+from typing import Dict, List, Set
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
-from typing import Dict
-from dataclasses import dataclass
+
 import yaml
 
 NAMESPACES = {
@@ -31,6 +32,10 @@ class Base:
     """ Базовый класс данных """
     key: str
     code: str
+
+    def __init__(self, _: Element = None, key='', code=''):
+        self.key = key
+        self.code = code
 
     @classmethod
     def get_dicts(cls, elem_name: str, elem: Element) -> '(Dict[str, cls], Dict[str, cls])':
@@ -71,6 +76,18 @@ class Competence(Indicator):
         super().__init__(elem)
         self.indicator_keys, self.indicator_codes = Indicator.get_dicts('ПланыКомпетенции', elem)
 
+    @property
+    def category(self) -> str:
+        """ Категория (группа) компетенций """
+        result = ''
+        if self.code.startswith('УК-'):
+            result = 'Универсальная'
+        elif self.code.startswith('ОПК'):
+            result = 'Общепрофессиональная'
+        elif self.code.startswith('ПК'):
+            result = 'Профессиональная'
+        return result
+
     @staticmethod
     def repr(competence):
         """ Для передачи в качестве ключа сортировки """
@@ -106,13 +123,24 @@ class Subject(Base):
     """ Дисциплина """
     name: str
     semesters: Dict[int, SemesterWork]
-    competencies: set
+    competencies: Set[str]
 
     def __init__(self, elem: Element):
         super().__init__(key=elem.get('Код'), code=elem.get('ДисциплинаКод'))
         self.name = elem.get('Дисциплина')
         self.semesters = dict()
         self.competencies = set()
+
+    def get_semesters(self) -> str:
+        semesters = [str(semester) for semester in self.semesters.keys()]
+        return ' '.join(semesters)
+
+    def get_total_credits(self) -> int:
+        result = 0
+        for semester in self.semesters.values():
+            result += semester.lectures + semester.practices + semester.labworks
+            result += semester.homeworks + semester.controls + semester.exams
+        return result
 
     @staticmethod
     def repr(competence):
@@ -140,6 +168,9 @@ class Subject(Base):
 @dataclass
 class EducationPlan:
     """ Рабочий учебный план """
+    code: str
+    name: str
+    program: str
     competence_keys: Dict[str, Competence]
     competence_codes: Dict[str, Competence]
     subject_keys: Dict[str, Subject]
@@ -148,6 +179,11 @@ class EducationPlan:
     def __init__(self, filename: str):
         root = ElementTree.parse(filename).getroot()
         plan = root.find('./{{{diffgr}}}diffgram/{{{mmisdb}}}dsMMISDB'.format(**NAMESPACES))
+        oop1 = plan.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
+        oop2 = oop1.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
+        self.code = oop1.get('Шифр')
+        self.name = oop1.get('Название')
+        self.program = '' if oop2 is None else oop2.get('Название')
         self.competence_keys, self.competence_codes = Competence.get_dicts('ПланыКомпетенции', plan)
         self.subject_keys, self.subject_codes = Subject.get_dicts('ПланыСтроки', plan)
         self.read_hours(plan)
@@ -168,8 +204,7 @@ class EducationPlan:
                 abbr = wt_abbr[sub_elem.get('КодВидаРаботы')]
                 self.read_work_hours(sub_elem, abbr)
             else:
-                # TODO: Проверить другие типы часов
-                pass
+                pass  # Нужно проверить другие типы часов
 
     def read_work_hours(self, elem: Element, work_type: str):
         """ Прочитать рабочие часы по дисциплинам """
@@ -206,10 +241,31 @@ class EducationPlan:
 @dataclass
 class Course:
     """ Курс обучения """
+    names: List[Set[str]]
+    year: int
+    authors: List[str]
+    goal: str
+    goals: List[str]
+    content: str
+    knowledges: List[str]
+    abilities: List[str]
+    skills: List[str]
+    links: List[Set[str]]
+    assessment = List[str]
+
     def __init__(self, filename: str):
-        with open(filename) as course_file:
-            data = yaml.load(course_file, Loader=yaml.CLoader)
-            self.plans = data['plans']
-            self.purpose = data['purpose']
-            self.author = data['author']
-            self.short_content = data['short_content']
+        with open(filename, encoding='UTF-8') as input_file:
+            data = yaml.load(input_file, Loader=yaml.CLoader)
+        self.names = [set(name) for name in data['названия']]
+        self.authors = data['авторы']
+        self.year = data['год']
+        if 'цель' in data:
+            self.goal = data['цель']
+        if 'цели' in data:
+            self.goals = data['цели']
+        self.content = data['содержание']
+        self.knowledges = data['знать']
+        self.abilities = data['уметь']
+        self.skills = data['владеть']
+        self.links = [set(name) for name in data['связи']]
+        self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
