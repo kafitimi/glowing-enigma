@@ -134,6 +134,7 @@ class Subject(Base):
         self.competencies = set()
 
     def get_controls(self) -> str:
+        """ Формы контроля для печати """
         result = set()
         for semester in self.semesters.values():
             for control in semester.control:
@@ -148,14 +149,17 @@ class Subject(Base):
         return (', '.join(result)).capitalize()
 
     def get_courses(self) -> str:
+        """ Получить курсы (годы) обучения """
         semesters = [str((semester + 1) // 2) for semester in self.semesters.keys()]
         return ', '.join(sorted(set(semesters)))
 
     def get_hours(self, attr) -> str:
+        """ Сумма часов определенного типа """
         hours = sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
         return '—' if hours == 0 else str(hours)
 
     def get_hours_123(self) -> str:
+        """ Сумма часов аудиторной работы """
         hours1 = sum([semester.lectures for semester in self.semesters.values()])
         hours21 = sum([semester.practices for semester in self.semesters.values()])
         hours22 = sum([semester.labworks for semester in self.semesters.values()])
@@ -164,19 +168,23 @@ class Subject(Base):
         return '—' if hours == 0 else str(hours)
 
     def get_hours_2(self) -> str:
+        """ Сумма часов семинарского типа (практика + лабораторки) """
         hours21 = sum([semester.practices for semester in self.semesters.values()])
         hours22 = sum([semester.labworks for semester in self.semesters.values()])
         hours = hours21 + hours22
         return '—' if hours == 0 else str(hours)
 
     def get_semesters(self) -> str:
+        """ Семестры в которые идет дисциплина """
         semesters = [str(semester) for semester in self.semesters.keys()]
         return ', '.join(sorted(semesters))
 
     def get_total_credits(self) -> int:
+        """ Зачетные единицы трудоемкости """
         return self.get_total_hours() // HOURS_PER_CREDIT
 
     def get_total_hours(self) -> int:
+        """ Общее количество часов """
         result = 0
         for semester in self.semesters.values():
             result += semester.lectures + semester.practices + semester.labworks

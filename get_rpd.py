@@ -62,53 +62,37 @@ def get_template() -> DocxTemplate:
 
 def add_competencies(template: DocxTemplate, context: dict) -> None:
     """ Готовим шаблон РПД к работе """
-    docx = template.get_docx()
-    table = docx.tables[1]
+
+    table = template.get_docx().tables[1]
     borders = table._element.find('.//{{{w}}}tcBorders'.format(**table._element.nsmap))
-
+    i = 0
     for code in sorted(context['subject'].competencies):
-        competence = context['plan'].competence_codes[code]
-
-        row = table.add_row()
-        for cell in row.cells:
+        new_row = table.add_row()
+        for cell in new_row.cells:
             cell._element[0].append(deepcopy(borders))
+        i += 1
 
-        category_cell = row.cells[0]
-        category_cell.text = competence.category
-        category_cell.paragraphs[0].style = 'Table Heading'
-
-        assessment_cell = row.cells[4]
-        assessment_cell.text = context['course'].assessment
-        assessment_cell.paragraphs[0].style = 'Table Heading'
-
-        competence_cell = row.cells[1]
-        competence_cell.text = competence.code + ' ' + competence.description
-        competence_cell.paragraphs[0].style = 'Table Contents'
+        competence = context['plan'].competence_codes[code]
+        add_table_cell(table, i, 0, 'Table Heading', '{category}'.format(**competence))
+        add_table_cell(table, i, 1, 'Table Contents', '{code} {description}'.format(**competence))
+        add_table_cell(table, i, 4, 'Table Heading', context['course'].assessment)
 
         for ind_code in sorted(competence.indicator_codes):
             indicator = competence.indicator_codes[ind_code]
-            text = ind_code + ' ' + indicator.description
-            indicator_cell = row.cells[2]
-            if indicator_cell.text:
-                indicator_cell.add_paragraph(text, 'Table Contents')
-            else:
-                indicator_cell.text = ind_code + ' ' + indicator.description
-                indicator_cell.paragraphs[0].style = 'Table Contents'
+            add_table_cell(table, i, 2, 'Table Contents', ind_code + ' ' + indicator.description)
 
-    competence_count = len(context['subject'].competencies)
-    table.cell(1, 3).merge(table.cell(competence_count, 3))
-    if context['course'].knowledges:
-        add_table_cell(table, 1, 3, 'Table Contents', 'Знать:')
-        for elem in context['course'].knowledges:
-            add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
-    if context['course'].abilities:
-        add_table_cell(table, 1, 3, 'Table Contents', 'Уметь:')
-        for elem in context['course'].abilities:
-            add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
-    if context['course'].skills:
-        add_table_cell(table, 1, 3, 'Table Contents', 'Владеть:')
-        for elem in context['course'].skills:
-            add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
+    def add_study_results(attr: str, caption: str) -> None:
+        """ Добавить в ячейку таблицы результаты обучения """
+        results = context['course'].__getattribute__(attr)
+        if results:
+            add_table_cell(table, 1, 3, 'Table Contents', caption)
+            for elem in results:
+                add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
+
+    table.cell(1, 3).merge(table.cell(i, 3))
+    add_study_results('knowledges', 'Знать:')
+    add_study_results('abilities', 'Уметь:')
+    add_study_results('skills', 'Владеть:')
 
 
 def find_subject(plan: EducationPlan, course_names: List[Set[str]]) -> Subject:
@@ -131,15 +115,15 @@ def find_dependencies(plan: EducationPlan, subject: Subject, course: Course) -> 
     semesters = subject.semesters.keys()
     first, last = min(semesters), max(semesters)
     before, after = set(), set()
-    for subject in plan.subject_keys.values():
-        subject_names = set(subject.name.lower().split())
+    for cur_subj in plan.subject_keys.values():
+        subject_names = set(cur_subj.name.lower().split())
         for names in course.links:
             if names <= subject_names:
-                semesters = subject.semesters.keys()
+                semesters = cur_subj.semesters.keys()
                 if max(semesters) < first:
-                    before.add('%s %s' % (subject.code, subject.name))
+                    before.add('%s %s' % (cur_subj.code, cur_subj.name))
                 if last < min(semesters):
-                    after.add('%s %s' % (subject.code, subject.name))
+                    after.add('%s %s' % (cur_subj.code, cur_subj.name))
     return ', '.join(before), ', '.join(after)
 
 
