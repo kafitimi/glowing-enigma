@@ -61,16 +61,16 @@ pip install -r requirements.txt
       История семейств ОС Unix, Linux, xBSD. Понятие дистрибутива Linux. Обзор популярных дистрибутивов Linux. Основные
       понятия (текущий каталог, корневой каталог, точка монтирования, домашний каталог). Типы файлов (обычные файлы,
       каталоги, файлы устройств). Команды навигации по файловой системе (cd, pushd, popd, pwd). Операции с файлами
-      (touch, rm, cp, mv, dd). Операции с каталогами (mkdir и rmdir). Просмотр файлов (cat, dog, head, tail, more, less).
-      Программы просмотра справочного руководства (troff, man и info). Поиск файлов (find, locate, whatis, whereis).
-      Ссылки (ln, unlink). Структура дерева каталогов Linux. Типы файловых систем и монтирование файловых систем (mount,
-      chroot). Работа с дисковыми накопителями (fdisk, mkfs, fsck, badblocks).
+      (touch, rm, cp, mv, dd). Операции с каталогами (mkdir и rmdir). Просмотр файлов (cat, dog, head, tail, more, 
+      less). Программы просмотра справочного руководства (troff, man и info). Поиск файлов (find, locate, whatis, 
+      whereis). Ссылки (ln, unlink). Структура дерева каталогов Linux. Типы файловых систем и монтирование файловых 
+      систем (mount, chroot). Работа с дисковыми накопителями (fdisk, mkfs, fsck, badblocks).
   - тема: 2. Управление пользователями. 
     содержание: >
-      Понятие учетной записи и аутентификации. Файлы /etc/passwd и /etc/group, /etc/shadow и /etc/gshadow. Учетная запись
-      root. Пароли в Linux. Команды login, su, newgrp, passwd, gpasswd, chage, useradd, userdel, usermod. Распределение
-      прав доступа в Linux. Чтение. Запись. Выполнение. Особенности прав у каталогов. Назначение прав доступа. Команды
-      chmod, chown, chgrp. Квотирование дискового пространства (du, df, edquota, quota).
+      Понятие учетной записи и аутентификации. Файлы /etc/passwd и /etc/group, /etc/shadow и /etc/gshadow. Учетная 
+      запись root. Пароли в Linux. Команды login, su, newgrp, passwd, gpasswd, chage, useradd, userdel, usermod. 
+      Распределение прав доступа в Linux. Чтение. Запись. Выполнение. Особенности прав у каталогов. Назначение прав 
+      доступа. Команды chmod, chown, chgrp. Квотирование дискового пространства (du, df, edquota, quota).
 ```
 
 В поле `названия` необходимо указать разные варианты названий вашего курса в РУПе. 

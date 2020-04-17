@@ -153,10 +153,9 @@ class Subject(Base):
         semesters = [str((semester + 1) // 2) for semester in self.semesters.keys()]
         return ', '.join(sorted(set(semesters)))
 
-    def get_hours(self, attr) -> str:
+    def get_hours(self, attr) -> int:
         """ Сумма часов определенного типа """
-        hours = sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
-        return '—' if hours == 0 else str(hours)
+        return sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
 
     def get_hours_123(self) -> str:
         """ Сумма часов аудиторной работы """

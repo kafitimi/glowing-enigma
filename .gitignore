@@ -1,10 +1,9 @@
-data/
-*.docx
-*.plx
-*.pyc
-*.txt
-*.xlsx
-*.yaml
-.idea
-.vscode
-venv
+.~lock.*  # Файлы блокировки LibreOffice
+*.docx  # Сгенерированные файлы РПД
+*.plx  # Рабочие учебные планы
+*.pyc  # Скомпилированные python-скрипты
+*.txt  # Сгенерированные файлы матриц компетенций
+*.yaml  # Описания курсов обучения
+.idea  # PyCharm IDE
+.vscode  # VS Code, VSCodium
+venv  # Виртуальное окружение

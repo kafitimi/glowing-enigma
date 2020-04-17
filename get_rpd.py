@@ -2,6 +2,7 @@
 
 import sys
 from copy import deepcopy
+from typing import List
 
 from docxtpl import DocxTemplate
 
@@ -19,6 +20,17 @@ def add_table_cell(table, row, col, style, text):
     else:
         cell.text = text
         cell.paragraphs[0].style = style
+
+
+def distribute(total: int, portions: int) -> List[int]:
+    """ Распределить часы по темам """
+    base, remainder = divmod(total, portions)
+    return [base] * (portions - remainder) + [base + 1] * remainder
+
+
+def str_or_dash(value: (int, str)) -> str:
+    """ Конвертируем целое в строку """
+    return str(value) if value else '—'
 
 
 def check_args() -> None:
@@ -48,7 +60,8 @@ def get_plan(plan_filename: str) -> EducationPlan:
     return plan
 
 
-def get_subject(plan:EducationPlan, course: Course) -> Subject:
+def get_subject(plan: EducationPlan, course: Course) -> Subject:
+    """ Ищем подходящую дисциплину в учебном плане """
     result = plan.find_subject(course.names)
     if result is None:
         print('Не могу найти подходящую дисциплину в учебном плане')
@@ -67,8 +80,8 @@ def get_template() -> DocxTemplate:
     return template
 
 
-def add_competencies(template: DocxTemplate, context: dict) -> None:
-    """ Готовим шаблон РПД к работе """
+def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
+    """ Заполняем таблицу с компетенциями в разделе 1.2 """
 
     table = template.get_docx().tables[1]
     borders = table._element.find('.//{{{w}}}tcBorders'.format(**table._element.nsmap))
@@ -102,6 +115,61 @@ def add_competencies(template: DocxTemplate, context: dict) -> None:
     add_study_results('skills', 'Владеть:')
 
 
+def fill_table_3_1(template: DocxTemplate, context: dict) -> None:
+    """ Заполняем таблицу с содержанием курса в разделе 3.1 """
+
+    table = template.get_docx().tables[4]
+    borders = table._element.find('.//{{{w}}}tcBorders'.format(**table._element.nsmap))
+
+    themes = context['course'].themes
+    themes_count = len(themes)
+    subject = context['subject']
+    lectures = distribute(subject.get_hours('lectures'), themes_count)
+    practices = distribute(subject.get_hours('practices'), themes_count)
+    labworks = distribute(subject.get_hours('labworks'), themes_count)
+    controls = distribute(subject.get_hours('controls'), themes_count)
+    homeworks = distribute(subject.get_hours('homeworks'), themes_count)
+
+    i = 1
+    for theme in themes:
+        new_row = table.add_row()
+        for cell in new_row.cells:
+            cell._element[0].append(deepcopy(borders))
+        i += 1
+
+        total = lectures[i-2] + practices[i-2] + labworks[i-2] + controls[i-2] + homeworks[i-2]
+        add_table_cell(table, i, 0, 'Table Contents', 'Тема %d. %s' % (i-1, theme['тема']))
+        add_table_cell(table, i, 1, 'Table Heading', str_or_dash(total))
+        add_table_cell(table, i, 2, 'Table Heading', str_or_dash(lectures[i-2]))
+        add_table_cell(table, i, 3, 'Table Heading', '—')
+        add_table_cell(table, i, 4, 'Table Heading', str_or_dash(practices[i-2]))
+        add_table_cell(table, i, 5, 'Table Heading', '—')
+        add_table_cell(table, i, 6, 'Table Heading', str_or_dash(labworks[i-2]))
+        add_table_cell(table, i, 7, 'Table Heading', '—')
+        add_table_cell(table, i, 8, 'Table Heading', '—')
+        add_table_cell(table, i, 9, 'Table Heading', '—')
+        add_table_cell(table, i, 10, 'Table Heading', str_or_dash(controls[i-2]))
+        add_table_cell(table, i, 11, 'Table Heading', str_or_dash(homeworks[i-2]))
+
+    new_row = table.add_row()
+    for cell in new_row.cells:
+        cell._element[0].append(deepcopy(borders))
+    i += 1
+
+    add_table_cell(table, i, 0, 'Table Contents', 'Всего часов')
+    add_table_cell(table, i, 1, 'Table Heading', str_or_dash(subject.get_total_hours()))
+    add_table_cell(table, i, 2, 'Table Heading', str_or_dash(sum(lectures)))
+    add_table_cell(table, i, 3, 'Table Heading', '—')
+    add_table_cell(table, i, 4, 'Table Heading', str_or_dash(sum(practices)))
+    add_table_cell(table, i, 5, 'Table Heading', '—')
+    add_table_cell(table, i, 6, 'Table Heading', str_or_dash(sum(labworks)))
+    add_table_cell(table, i, 7, 'Table Heading', '—')
+    add_table_cell(table, i, 8, 'Table Heading', '—')
+    add_table_cell(table, i, 9, 'Table Heading', '—')
+    add_table_cell(table, i, 10, 'Table Heading', str_or_dash(sum(controls)))
+    add_table_cell(table, i, 11, 'Table Heading', str_or_dash(sum(homeworks)))
+
+
 def main() -> None:
     """ Точка входа """
     check_args()
@@ -117,7 +185,8 @@ def main() -> None:
         'links_before': links_before,
         'links_after': links_after,
     }
-    add_competencies(template, context)
+    fill_table_1_2(template, context)
+    fill_table_3_1(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 
