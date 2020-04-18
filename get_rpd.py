@@ -170,6 +170,42 @@ def fill_table_3_1(template: DocxTemplate, context: dict) -> None:
     add_table_cell(table, i, 11, 'Table Heading', str_or_dash(sum(homeworks)))
 
 
+def fill_table_4(template: DocxTemplate, context: dict) -> None:
+    """ Заполняем таблицу с содержанием СРС в разделе 4 """
+
+    table = template.get_docx().tables[5]
+    borders = table._element.find('.//{{{w}}}tcBorders'.format(**table._element.nsmap))
+
+    themes = context['course'].themes
+    themes_count = len(themes)
+    subject = context['subject']
+    homeworks = distribute(subject.get_hours('homeworks'), themes_count)
+
+    homework_text = "Проработка теоретического материала, подготовка к выполнению лабораторной работы"
+    homework_control = "Вопросы к итоговому тесту"
+
+    i = 0
+    for theme in themes:
+        new_row = table.add_row()
+        for cell in new_row.cells:
+            cell._element[0].append(deepcopy(borders))
+        i += 1
+
+        add_table_cell(table, i, 0, 'Table Heading', str(i))
+        add_table_cell(table, i, 1, 'Table Heading', theme['тема'])
+        add_table_cell(table, i, 2, 'Table Heading', homework_text)
+        add_table_cell(table, i, 3, 'Table Heading', str_or_dash(homeworks[i-1]))
+        add_table_cell(table, i, 4, 'Table Heading', homework_control)
+
+    new_row = table.add_row()
+    for cell in new_row.cells:
+        cell._element[0].append(deepcopy(borders))
+    i += 1
+
+    add_table_cell(table, i, 1, 'Table Contents', 'Всего часов')
+    add_table_cell(table, i, 3, 'Table Heading', str_or_dash(sum(homeworks)))
+
+
 def main() -> None:
     """ Точка входа """
     check_args()
@@ -187,6 +223,7 @@ def main() -> None:
     }
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
+    fill_table_4(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 
