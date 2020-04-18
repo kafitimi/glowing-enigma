@@ -1,12 +1,12 @@
 """ Generate working program of subject """
-
+import functools
 import sys
 from copy import deepcopy
 from typing import List
 
 from docxtpl import DocxTemplate
 
-from core import Course, EducationPlan, Subject
+from core import Course, EducationPlan, Subject, CT_EXAM
 
 BACHELOR = 1
 MASTER = 2
@@ -206,6 +206,20 @@ def fill_table_4(template: DocxTemplate, context: dict) -> None:
     add_table_cell(table, i, 3, 'Table Heading', str_or_dash(sum(homeworks)))
 
 
+def remove_extra_table_5(template, context):
+    """ Удаляем лишнюю таблицу из раздела 5 """
+    subject = context['subject']
+    control = [s.control for s in subject.semesters.values()]
+    control = functools.reduce(lambda x, y: x + y, control)
+    docx = template.get_docx()
+    if CT_EXAM in control:
+        table_el = docx.tables[7]._element
+    else:
+        table_el = docx.tables[6]._element
+    parent_el = table_el.getparent()
+    parent_el.remove(table_el)
+
+
 def main() -> None:
     """ Точка входа """
     check_args()
@@ -224,6 +238,7 @@ def main() -> None:
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
     fill_table_4(template, context)
+    remove_extra_table_5(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 
