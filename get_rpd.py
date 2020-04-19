@@ -1,4 +1,4 @@
-""" Generate working program of subject """
+""" Генерация РПД """
 import functools
 import sys
 from copy import deepcopy
@@ -24,6 +24,16 @@ def add_table_cell(table: Table, row: int, col: int, style: str, text: str) -> N
     else:
         cell.text = text
         cell.paragraphs[0].style = style
+
+
+def fill_table_column(table: Table, row: int, columns: List[int], values: List[any]) -> None:
+    """ Заполнить колонку таблицу """
+    for value in values:
+        str_value = str_or_dash(value)
+        for col in columns:
+            style = CENTER if len(str_value) < 5 else JUSTIFY
+            add_table_cell(table, row, col, style, str_value)
+        row += 1
 
 
 def add_table_rows(table: Table, rows: int) -> None:
@@ -107,17 +117,17 @@ def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
     table = template.get_docx().tables[1]
     add_table_rows(table, len(context['subject'].competencies))
 
-    i = 0
+    row = 0
     for code in sorted(context['subject'].competencies):
-        i += 1
+        row += 1
         competence = context['plan'].competence_codes[code]
-        add_table_cell(table, i, 0, CENTER, competence.category)
-        add_table_cell(table, i, 1, JUSTIFY, competence.code + ' ' + competence.description)
-        add_table_cell(table, i, 4, CENTER, context['course'].assessment)
+        add_table_cell(table, row, 0, CENTER, competence.category)
+        add_table_cell(table, row, 1, JUSTIFY, competence.code + ' ' + competence.description)
+        add_table_cell(table, row, 4, CENTER, context['course'].assessment)
 
         for ind_code in sorted(competence.indicator_codes):
             indicator = competence.indicator_codes[ind_code]
-            add_table_cell(table, i, 2, JUSTIFY, ind_code + ' ' + indicator.description)
+            add_table_cell(table, row, 2, JUSTIFY, ind_code + ' ' + indicator.description)
 
     def add_study_results(attr: str, caption: str) -> None:
         """ Добавить в ячейку таблицы результаты обучения """
@@ -127,7 +137,7 @@ def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
             for elem in results:
                 add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
 
-    table.cell(1, 3).merge(table.cell(i, 3))
+    table.cell(1, 3).merge(table.cell(row, 3))
     add_study_results('knowledges', 'Знать:')
     add_study_results('abilities', 'Уметь:')
     add_study_results('skills', 'Владеть:')
@@ -135,48 +145,31 @@ def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
 
 def fill_table_3_1(template: DocxTemplate, context: dict) -> None:
     """ Заполняем таблицу с содержанием курса в разделе 3.1 """
-    themes = context['course'].themes
+
+    # Извлекаем названия тем и форматируем для заполнения таблицы
+    course, subject = context['course'], context['subject']
+    themes = ['Тема %d. %s' % (i + 1, t['тема']) for i, t in enumerate(course.themes)]
+
+    # Равномерно размазываем часы по темам
     themes_count = len(themes)
-    subject = context['subject']
     lectures = distribute(subject.get_hours('lectures'), themes_count)
     practices = distribute(subject.get_hours('practices'), themes_count)
     labworks = distribute(subject.get_hours('labworks'), themes_count)
     controls = distribute(subject.get_hours('controls'), themes_count)
     homeworks = distribute(subject.get_hours('homeworks'), themes_count)
+    totals = [sum(t) for t in zip(lectures, practices, labworks, controls, homeworks)]
 
+    # Заполняем таблицу
     table = template.get_docx().tables[4]
     add_table_rows(table, themes_count + 1)  # последняя строка - для итога
-
-    i = 1
-    for theme in themes:
-        i += 1
-        total = lectures[i-2] + practices[i-2] + labworks[i-2] + controls[i-2] + homeworks[i-2]
-        add_table_cell(table, i, 0, JUSTIFY, 'Тема %d. %s' % (i-1, theme['тема']))
-        add_table_cell(table, i, 1, CENTER, str_or_dash(total))
-        add_table_cell(table, i, 2, CENTER, str_or_dash(lectures[i-2]))
-        add_table_cell(table, i, 3, CENTER, '—')
-        add_table_cell(table, i, 4, CENTER, str_or_dash(practices[i-2]))
-        add_table_cell(table, i, 5, CENTER, '—')
-        add_table_cell(table, i, 6, CENTER, str_or_dash(labworks[i-2]))
-        add_table_cell(table, i, 7, CENTER, '—')
-        add_table_cell(table, i, 8, CENTER, '—')
-        add_table_cell(table, i, 9, CENTER, '—')
-        add_table_cell(table, i, 10, CENTER, str_or_dash(controls[i-2]))
-        add_table_cell(table, i, 11, CENTER, str_or_dash(homeworks[i-2]))
-
-    i += 1
-    add_table_cell(table, i, 0, JUSTIFY, 'Всего часов')
-    add_table_cell(table, i, 1, CENTER, str_or_dash(subject.get_total_hours()))
-    add_table_cell(table, i, 2, CENTER, str_or_dash(sum(lectures)))
-    add_table_cell(table, i, 3, CENTER, '—')
-    add_table_cell(table, i, 4, CENTER, str_or_dash(sum(practices)))
-    add_table_cell(table, i, 5, CENTER, '—')
-    add_table_cell(table, i, 6, CENTER, str_or_dash(sum(labworks)))
-    add_table_cell(table, i, 7, CENTER, '—')
-    add_table_cell(table, i, 8, CENTER, '—')
-    add_table_cell(table, i, 9, CENTER, '—')
-    add_table_cell(table, i, 10, CENTER, str_or_dash(sum(controls)))
-    add_table_cell(table, i, 11, CENTER, str_or_dash(sum(homeworks)))
+    fill_table_column(table, 2, [0], themes + ['Всего часов'])
+    fill_table_column(table, 2, [1], totals + [subject.get_total_hours()])
+    fill_table_column(table, 2, [2], lectures + [sum(lectures)])
+    fill_table_column(table, 2, [4], practices + [sum(practices)])
+    fill_table_column(table, 2, [6], labworks + [sum(labworks)])
+    fill_table_column(table, 2, [10], controls + [sum(controls)])
+    fill_table_column(table, 2, [11], homeworks + [sum(homeworks)])
+    fill_table_column(table, 2, [3, 5, 7, 8, 9], [0] * (themes_count + 1))  # пустые значения
 
 
 def fill_table_4(template: DocxTemplate, context: dict) -> None:
