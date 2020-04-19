@@ -2,12 +2,12 @@
 import functools
 import sys
 from copy import deepcopy
-from typing import List
+from typing import List, Dict
 
 from docx.table import Table
 from docxtpl import DocxTemplate
 
-from core import Course, EducationPlan, Subject, CT_EXAM, CT_CREDIT_GRADE
+from core import Course, EducationPlan, Subject, CT_EXAM, CT_CREDIT_GRADE, CT_CREDIT
 
 BACHELOR = 1
 MASTER = 2
@@ -60,7 +60,7 @@ def distribute(total: int, portions: int) -> List[int]:
     return [base] * (portions - remainder) + [base + 1] * remainder
 
 
-def str_or_dash(value: (int, str)) -> str:
+def str_or_dash(value: any) -> str:
     """ Конвертируем целое в строку """
     return str(value) if value else '—'
 
@@ -112,7 +112,7 @@ def get_template() -> DocxTemplate:
     return template
 
 
-def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
+def fill_table_1_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполняем таблицу с компетенциями в разделе 1.2 """
     table = template.get_docx().tables[1]
     add_table_rows(table, len(context['subject'].competencies))
@@ -143,7 +143,7 @@ def fill_table_1_2(template: DocxTemplate, context: dict) -> None:
     add_study_results('skills', 'Владеть:')
 
 
-def fill_table_3_1(template: DocxTemplate, context: dict) -> None:
+def fill_table_3_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполняем таблицу с содержанием курса в разделе 3.1 """
 
     # Извлекаем названия тем и форматируем для заполнения таблицы
@@ -172,7 +172,7 @@ def fill_table_3_1(template: DocxTemplate, context: dict) -> None:
     fill_table_column(table, 2, [3, 5, 7, 8, 9], [0] * (themes_count + 1))  # пустые значения
 
 
-def fill_table_4(template: DocxTemplate, context: dict) -> None:
+def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполняем таблицу с содержанием СРС в разделе 4 """
     themes = context['course'].themes
     themes_count = len(themes)
@@ -199,24 +199,95 @@ def fill_table_4(template: DocxTemplate, context: dict) -> None:
     add_table_cell(table, i, 3, CENTER, str_or_dash(sum(homeworks)))
 
 
-def remove_extra_table_6_1(template, context):
-    """ Удаляем лишнюю таблицу из раздела 6.1 """
-    exam_table, graded_credit_table, credit_table = 8, 9, 10
-    subject = context['subject']
+def fill_table_6_1(template:DocxTemplate, context: Dict[str, any]):
+    """ Заполняем таблицу в разделе 6.1 """
+    course, subject = context['course'], context['subject']
+
+    # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y, control)
     if CT_EXAM in control:
-        remove_table(template, credit_table)
-        remove_table(template, graded_credit_table)
+        levels = [
+            ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
+            ('Минимальный', 'Удовлетворительно'), ('Не освоены', 'Неудовлетворительно'),
+        ]
     elif CT_CREDIT_GRADE in control:
-        remove_table(template, credit_table)
-        remove_table(template, exam_table)
+        levels = [
+            ('Высокий', 'Зачтено (отлично)'), ('Базовый', 'Не зачтено (хорошо)'),
+            ('Минимальный', 'Зачтено (удовлетворительно)'), ('Не освоены', 'Не зачтено'),
+        ]
     else:
-        remove_table(template, graded_credit_table)
-        remove_table(template, exam_table)
+        levels = [('Освоено', 'Зачтено'), ('Не освоено', 'Не зачтено')]
+
+    # Строки таблицы
+    table = template.get_docx().tables[7]
+    rows_count = len(subject.competencies) * len(levels)
+    add_table_rows(table, rows_count)
+
+    # Компетенции и индикаторы
+    start_row = 2
+    for code in subject.competencies:
+        competence = context['plan'].competence_codes[code]
+        table.cell(start_row, 0).merge(table.cell(start_row + len(levels) - 1, 0))
+        add_table_cell(table, start_row, 0, JUSTIFY, competence.code + ' ' + competence.description)
+        table.cell(start_row, 1).merge(table.cell(start_row + len(levels) - 1, 1))
+        for ind_code in sorted(competence.indicator_codes):
+            indicator = competence.indicator_codes[ind_code]
+            add_table_cell(table, start_row, 1, JUSTIFY, ind_code + ' ' + indicator.description)
+        start_row += len(levels)
+
+    # Знать, уметь, владеть
+    def add_study_results(attr: str, caption: str, row: int, col: int) -> None:
+        """ Добавить в ячейку таблицы результаты обучения """
+        results = course.__getattribute__(attr)
+        if results:
+            add_table_cell(table, row, col, JUSTIFY, caption)
+            for elem in results:
+                add_table_cell(table, row, col, 'Table List', '•\t' + elem)
+    start_row = 2
+    table.cell(start_row, 2).merge(table.cell(start_row + rows_count - 1, 2))
+    add_study_results('knowledges', 'Знать:', 2, 2)
+    add_study_results('abilities', 'Уметь:', 2, 2)
+    add_study_results('skills', 'Владеть:', 2, 2)
+
+    # Уровни освоения
+    start_row = 2
+    for level, grade in levels:
+        table.cell(start_row, 3).merge(table.cell(start_row + len(levels) - 1, 3))
+        add_table_cell(table, start_row, 3, CENTER, level)
+        table.cell(start_row, 4).merge(table.cell(start_row + len(levels) - 1, 4))
+        if CT_CREDIT in control:
+            if level == 'Освоено':
+                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
+            else:
+                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
+        else:
+            if level == 'Высокий':
+                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
+            elif level == 'Базовый':
+                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
+            elif level == 'Минимальный':
+                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
+            else:
+                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
+                add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
+        table.cell(start_row, 5).merge(table.cell(start_row + len(levels) - 1, 5))
+        add_table_cell(table, start_row, 5, CENTER, grade)
+        start_row += len(subject.competencies)
 
 
-def remove_extra_table_5(template, context):
+def remove_extra_table_5(template: DocxTemplate, context: Dict[str, any]):
     """ Удаляем лишнюю таблицу из раздела 5 """
     exam_table, credit_table = 6, 7
     subject = context['subject']
@@ -243,11 +314,11 @@ def main() -> None:
         'links_before': links_before,
         'links_after': links_after,
     }
-    remove_extra_table_6_1(template, context)
     remove_extra_table_5(template, context)
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
     fill_table_4(template, context)
+    fill_table_6_1(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 
