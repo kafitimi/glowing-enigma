@@ -1,2 +1,3 @@
 docxtpl
+python-docx
 pyyaml
