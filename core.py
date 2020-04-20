@@ -328,6 +328,9 @@ class Course:
     links: List[Set[str]]
     assessment: List[str]
     themes: List[Dict[str, str]]
+    websites: List[str]
+    software: List[str]
+    infosystems: List[str]
 
     def __init__(self, filename: str):
         with open(filename, encoding='UTF-8') as input_file:
@@ -346,3 +349,6 @@ class Course:
         self.links = [set(name) for name in data['связи']]
         self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
         self.themes = data['темы']
+        self.websites = data.get('интернет-сайты', ['Поисковая система Google https://www.google.com/'])
+        self.software = data.get('программное обеспечение', [])
+        self.infosystems = data.get('информационные системы', [])
