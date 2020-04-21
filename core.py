@@ -328,7 +328,7 @@ class Course:
     skills: List[str]
     links: List[Set[str]]
     assessment: List[str]
-    themes: List[Dict[str, str]]
+    themes: List[Dict[str, Union[str, RichText]]]
     controls: List[Dict[str, Union[str, List[str], RichText]]]
     websites: List[str]
     software: List[str]
@@ -351,6 +351,8 @@ class Course:
         self.links = [set(name) for name in data['связи']]
         self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
         self.themes = data['темы']
+        for item in self.themes:
+            item['содержание'] = R(item['содержание'].replace('\n', '\a'))
         self.controls = data.get('контроль', [])
         for item in self.controls:
             item['подзаголовок'] = R(item['подзаголовок'].replace('\n', '\a'), style='Подзаголовок')
