@@ -71,6 +71,50 @@ pip install -r requirements.txt
       запись root. Пароли в Linux. Команды login, su, newgrp, passwd, gpasswd, chage, useradd, userdel, usermod. 
       Распределение прав доступа в Linux. Чтение. Запись. Выполнение. Особенности прав у каталогов. Назначение прав 
       доступа. Команды chmod, chown, chgrp. Квотирование дискового пространства (du, df, edquota, quota).
+контроль:
+  - подзаголовок: Контрольные вопросы по теме 1. Введение, работа с файловой системой 
+    содержание: |-
+      В каком из перечисленных дистрибутивов Linux не используется rpm или deb пакетный менеджер?
+        a. Red Hat
+        b. FreeBSD
+        c. Open Suse
+        d. Gentoo
+        e. Debian
+      Какой командой можно временно получить права root?
+        a. env
+        b. ena
+        c. gain root
+        d. sudo
+        e. change login
+      Какой командой посмотреть скрытые файлы в директории?
+        a. dir -full
+        b. ls -l
+        c. show pwd
+        d. ls -lah
+        e. dir status
+  - подзаголовок: Контрольные вопросы по теме 2. Управление пользователями
+    содержание: |-
+      В каком файле хранится информация о группах?
+        a. /ets/grp
+        b. /ets/group
+        c. /ets/groups
+        d. /ets/bin/groups
+      Где находится файл с пользователями, описанием и паролями?
+        a. /usr/bin
+        b. /ets/passwd
+        c. /sbin/passwd
+        d. /root/Desktop
+      При помощи какой команды добавить новую группу?
+        a. addgroup
+        b. groupadd
+        c. newgroup
+        d. grpadd
+      Какой командой изменяются права доступа к файлам?
+        a. usermod
+        b. chmod
+        c. changemod
+        d. chepermission
+      Разъясните понятие учетной записи и аутентификации в Linux. Опишите структуру записей файлах /etc/passwd и /etc/shadow.
 интернет-сайты:
   - Сетевой репозиторий пакетов компании Яндекс https://mirror.yandex.ru/ 
 программное обеспечение:

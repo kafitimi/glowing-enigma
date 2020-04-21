@@ -2,7 +2,7 @@
 import functools
 import sys
 from copy import deepcopy
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from docx.table import Table
 from docxtpl import DocxTemplate
@@ -26,7 +26,7 @@ def add_table_cell(table: Table, row: int, col: int, style: str, text: str) -> N
         cell.paragraphs[0].style = style
 
 
-def fill_table_column(table: Table, row: int, columns: List[int], values: List[any]) -> None:
+def fill_table_column(table: Table, row: int, columns: List[int], values: List[Any]) -> None:
     """ Заполнить колонку таблицу """
     for value in values:
         str_value = str_or_dash(value)
@@ -60,7 +60,7 @@ def distribute(total: int, portions: int) -> List[int]:
     return [base] * (portions - remainder) + [base + 1] * remainder
 
 
-def str_or_dash(value: any) -> str:
+def str_or_dash(value: Any) -> str:
     """ Конвертируем целое в строку """
     return str(value) if value else '—'
 
@@ -112,7 +112,7 @@ def get_template() -> DocxTemplate:
     return template
 
 
-def fill_table_1_2(template: DocxTemplate, context: Dict[str, any]) -> None:
+def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу с компетенциями в разделе 1.2 """
     table = template.get_docx().tables[1]
     add_table_rows(table, len(context['subject'].competencies))
@@ -143,7 +143,7 @@ def fill_table_1_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     add_study_results('skills', 'Владеть:')
 
 
-def fill_table_3_1(template: DocxTemplate, context: Dict[str, any]) -> None:
+def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу с содержанием курса в разделе 3.1 """
 
     # Извлекаем названия тем и форматируем для заполнения таблицы
@@ -172,7 +172,7 @@ def fill_table_3_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     fill_table_column(table, 2, [3, 5, 7, 8, 9], [0] * (themes_count + 1))  # пустые значения
 
 
-def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
+def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу с содержанием СРС в разделе 4 """
     themes = context['course'].themes
     themes_count = len(themes)
@@ -199,7 +199,7 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     add_table_cell(table, i, 3, CENTER, str_or_dash(sum(homeworks)))
 
 
-def fill_table_6_1(template:DocxTemplate, context: Dict[str, any]):
+def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     """ Заполняем таблицу в разделе 6.1 """
     course, subject = context['course'], context['subject']
 
@@ -220,7 +220,7 @@ def fill_table_6_1(template:DocxTemplate, context: Dict[str, any]):
         levels = [('Освоено', 'Зачтено'), ('Не освоено', 'Не зачтено')]
 
     # Строки таблицы
-    table = template.get_docx().tables[7]
+    table = template.get_docx().tables[6]
     rows_count = len(subject.competencies) * len(levels)
     add_table_rows(table, rows_count)
 
@@ -287,7 +287,7 @@ def fill_table_6_1(template:DocxTemplate, context: Dict[str, any]):
         start_row += len(subject.competencies)
 
 
-def remove_extra_table_5(template: DocxTemplate, context: Dict[str, any]):
+def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     """ Удаляем лишнюю таблицу из раздела 5 """
     exam_table, credit_table = 6, 7
     subject = context['subject']

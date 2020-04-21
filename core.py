@@ -1,11 +1,12 @@
 """ Базовые классы """
 
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
 import yaml
+from docxtpl import R, RichText
 
 NAMESPACES = {
     'msdata': 'urn:schemas-microsoft-com:xml-msdata',
@@ -328,6 +329,7 @@ class Course:
     links: List[Set[str]]
     assessment: List[str]
     themes: List[Dict[str, str]]
+    controls: List[Dict[str, Union[str, List[str], RichText]]]
     websites: List[str]
     software: List[str]
     infosystems: List[str]
@@ -349,6 +351,10 @@ class Course:
         self.links = [set(name) for name in data['связи']]
         self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
         self.themes = data['темы']
+        self.controls = data.get('контроль', [])
+        for item in self.controls:
+            item['подзаголовок'] = R(item['подзаголовок'].replace('\n', '\a'), style='Подзаголовок')
+            item['содержание'] = R(item['содержание'].replace('\n', '\a'))
         self.websites = data.get('интернет-сайты', ['Поисковая система Google https://www.google.com/'])
         self.software = data.get('программное обеспечение', [])
         self.infosystems = data.get('информационные системы', [])
