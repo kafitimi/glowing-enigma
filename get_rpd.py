@@ -287,6 +287,25 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         start_row += len(subject.competencies)
 
 
+def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
+    """ Заполняем таблицу со ссылками на литературу в разделе 7 """
+    def append_table_7_section(caption, books):
+        rows_count = len(table.rows)
+        add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
+        table.cell(rows_count, 0).merge(table.cell(rows_count, 4))
+        add_table_cell(table, rows_count, 0, CENTER, caption)
+        for i, book in enumerate(books):
+            add_table_cell(table, rows_count + i + 1, 0, CENTER, str(i + 1))
+            add_table_cell(table, rows_count + i + 1, 1, CENTER, book['гост'])
+            add_table_cell(table, rows_count + i + 1, 2, CENTER, book['гриф'])
+            add_table_cell(table, rows_count + i + 1, 3, CENTER, book['экз'])
+            add_table_cell(table, rows_count + i + 1, 4, CENTER, book['эбс'])
+
+    table = template.get_docx().tables[7]
+    append_table_7_section('Основная литература', context['course'].primary_books)
+    append_table_7_section('Дополнительная литература', context['course'].secondary_books)
+
+
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     """ Удаляем лишнюю таблицу из раздела 5 """
     exam_table, credit_table = 6, 7
@@ -319,6 +338,7 @@ def main() -> None:
     fill_table_3_1(template, context)
     fill_table_4(template, context)
     fill_table_6_1(template, context)
+    fill_table_7(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
 

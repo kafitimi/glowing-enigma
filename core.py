@@ -1,11 +1,15 @@
 """ Базовые классы """
-
+import json
+import re
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple, Union
+from http import HTTPStatus
+from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+import requests
 import yaml
+from bs4 import BeautifulSoup
 from docxtpl import R, RichText
 
 NAMESPACES = {
@@ -28,6 +32,55 @@ CT_EXAM = 'Эк'
 CT_CREDIT_GRADE = 'ЗаО'
 CT_CREDIT = 'За'
 CT_COURSEWORK = 'КП'
+
+IPRBOOKS = 'http://www.iprbookshop.ru'
+
+
+def get_books_by_url(url: str) -> str:
+    """ Получить описание книги в формате ГОСТ по ссылке в ЭБС IPRBooks """
+    response = requests.get(url)
+    if response.status_code == HTTPStatus.OK and not response.url.endswith('accessDenied'):
+        soup = BeautifulSoup(response.text, 'lxml')
+        header = soup.find('h3', text='Библиографическая запись')
+        div1 = header.find_next_sibling()
+        div2 = div1.find('div', class_='col-sm-12')
+        return div2.text.strip()
+    return ''
+
+
+def get_links_from_iprbooks(keywords: List[str]) -> List[Tuple[int, str, str]]:
+    """ Найти ссылки на литературу в ЭБС IPRBooks по списку ключевых слов """
+    count, page, result = 0, 1, []
+    while True:
+        query = {'s': '+'.join(keywords), 'rsearch': 1, 'page': page}
+        response = requests.get(IPRBOOKS + '/75242', params=query)
+        if response.status_code != HTTPStatus.OK:
+            break
+        content = json.loads(response.content)
+        count = max(count, int(content['count']))
+        soup = BeautifulSoup(content['data'], 'lxml')
+        for tag in soup.find_all('div', class_='search-title'):
+            link = tag.find('a', attrs={'target': '_blank'})
+            next_tag = tag.find_next_sibling()
+            year = int(re.findall(r'\d{4}', next_tag.text)[0][:4])
+            result.append((year, link.text, link.attrs['href']))
+        if len(result) >= count:
+            break
+        page += 1
+    return sorted(result, reverse=True)
+
+
+def append_iprbooks(books: List[Dict[str, Any]], keywords: List[str], max_count: int) -> None:
+    """ Добавить описания книг из ЭБС IPRBooks """
+    paths = get_links_from_iprbooks(keywords)
+    for _, _, path in paths[:max_count]:
+        url = IPRBOOKS + path
+        books.append({
+            'гост': get_books_by_url(url),
+            'гриф': '—',
+            'экз': '—',
+            'эбс': url,
+        })
 
 
 @dataclass
@@ -330,6 +383,8 @@ class Course:
     assessment: List[str]
     themes: List[Dict[str, Union[str, RichText]]]
     controls: List[Dict[str, Union[str, List[str], RichText]]]
+    primary_books: List[Dict[str, Any]]
+    secondary_books: List[Dict[str, Any]]
     websites: List[str]
     software: List[str]
     infosystems: List[str]
@@ -360,3 +415,15 @@ class Course:
         self.websites = data.get('интернет-сайты', ['Поисковая система Google https://www.google.com/'])
         self.software = data.get('программное обеспечение', [])
         self.infosystems = data.get('информационные системы', [])
+
+        primary_books = data.get('основная литература', {})
+        self.primary_books = primary_books.get('ссылки', [])
+        if 'iprbooks' in primary_books:
+            iprbooks = primary_books['iprbooks']
+            append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
+
+        secondary_books = data.get('дополнительная литература', {})
+        self.secondary_books = secondary_books.get('ссылки', [])
+        if 'iprbooks' in secondary_books:
+            iprbooks = secondary_books['iprbooks']
+            append_iprbooks(self.secondary_books, iprbooks['запрос'], iprbooks['количество'])

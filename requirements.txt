@@ -1,3 +1,5 @@
+beautifulsoup4
 docxtpl
 python-docx
 pyyaml
+requests
