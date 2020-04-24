@@ -34,9 +34,10 @@ CT_CREDIT = 'За'
 CT_COURSEWORK = 'КП'
 
 IPRBOOKS = 'http://www.iprbookshop.ru'
+LANBOOK = 'http://e.lanbook.com'
 
 
-def get_books_by_url(url: str) -> str:
+def get_book_from_iprbooks(url: str) -> str:
     """ Получить описание книги в формате ГОСТ по ссылке в ЭБС IPRBooks """
     response = requests.get(url)
     if response.status_code == HTTPStatus.OK and not response.url.endswith('accessDenied'):
@@ -49,7 +50,7 @@ def get_books_by_url(url: str) -> str:
 
 
 def get_links_from_iprbooks(keywords: List[str]) -> List[Tuple[int, str, str]]:
-    """ Найти ссылки на литературу в ЭБС IPRBooks по списку ключевых слов """
+    """ Найти книги в ЭБС IPRBooks по списку ключевых слов """
     count, page, result = 0, 1, []
     while True:
         query = {'s': '+'.join(keywords), 'rsearch': 1, 'page': page}
@@ -76,7 +77,47 @@ def append_iprbooks(books: List[Dict[str, Any]], keywords: List[str], max_count:
     for _, _, path in paths[:max_count]:
         url = IPRBOOKS + path
         books.append({
-            'гост': get_books_by_url(url),
+            'гост': get_book_from_iprbooks(url),
+            'гриф': '—',
+            'экз': '—',
+            'эбс': url,
+        })
+
+
+def get_book_from_lanbook(book_id: str) -> str:
+    """ Получить описание книги в формате ГОСТ по ссылке в ЭБС Лань """
+    url = 'https://e.lanbook.com/api/v2/catalog/book/' + book_id
+    response = requests.get(url)
+    if response.status_code == HTTPStatus.OK:
+        data = json.loads(response.text)
+        return data['body']['biblioRecord']
+    return ''
+
+
+def get_books_from_lanbook(keywords: List[str]) -> List[Tuple[int, str, str]]:
+    """ Найти книги в ЭБС Лань по списку ключевых слов """
+    page, result = 1, []
+    while True:
+        query = {'query': ' '.join(keywords), 'page': page}
+        response = requests.get(LANBOOK + '/api/v2/search/books/main', params=query)
+        if response.status_code != HTTPStatus.OK:
+            break
+        data = json.loads(response.content)['body']['book']
+        for book in data['items']:
+            result.append((book['year'], book['name'], str(book['id'])))
+        total = data['total']
+        if len(result) >= total:
+            break
+    return sorted(result, reverse=True)
+
+
+def append_lanbook(books: List[Dict[str, Any]], keywords: List[str], max_count: int) -> None:
+    """ Добавить описания книг из ЭБС IPRBooks """
+    paths = get_books_from_lanbook(keywords)
+    for _, _, book_id in paths[:max_count]:
+        url = LANBOOK + '/book/' + book_id
+        books.append({
+            'гост': get_book_from_lanbook(book_id),
             'гриф': '—',
             'экз': '—',
             'эбс': url,
@@ -421,9 +462,15 @@ class Course:
         if 'iprbooks' in primary_books:
             iprbooks = primary_books['iprbooks']
             append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
+        if 'лань' in primary_books:
+            lanbook = primary_books['лань']
+            append_lanbook(self.primary_books, lanbook['запрос'], lanbook['количество'])
 
         secondary_books = data.get('дополнительная литература', {})
         self.secondary_books = secondary_books.get('ссылки', [])
         if 'iprbooks' in secondary_books:
             iprbooks = secondary_books['iprbooks']
             append_iprbooks(self.secondary_books, iprbooks['запрос'], iprbooks['количество'])
+        if 'лань' in secondary_books:
+            lanbook = secondary_books['лань']
+            append_lanbook(self.secondary_books, lanbook['запрос'], lanbook['количество'])
