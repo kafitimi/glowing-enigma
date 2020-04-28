@@ -1,6 +1,7 @@
 """ Базовые классы """
 import json
 import re
+import sys
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Dict, List, Set, Tuple, Union, Any
@@ -10,7 +11,7 @@ from xml.etree.ElementTree import Element
 import requests
 import yaml
 from bs4 import BeautifulSoup
-from docxtpl import R, RichText
+from docxtpl import R, RichText, DocxTemplate
 
 NAMESPACES = {
     'msdata': 'urn:schemas-microsoft-com:xml-msdata',
@@ -35,6 +36,26 @@ CT_COURSEWORK = 'КП'
 
 IPRBOOKS = 'http://www.iprbookshop.ru'
 LANBOOK = 'http://e.lanbook.com'
+
+
+def get_plan(plan_filename: str) -> 'EducationPlan':
+    """ Читаем учебный план """
+    try:
+        plan = EducationPlan(plan_filename)
+    except OSError:
+        print('Не могу открыть учебный план %s' % plan_filename)
+        sys.exit()
+    return plan
+
+
+def get_template(filename: str) -> DocxTemplate:
+    """ Читаем шаблон РПД """
+    try:
+        template = DocxTemplate(filename)
+    except OSError:
+        print('Не могу открыть шаблон')
+        sys.exit()
+    return template
 
 
 def get_book_from_iprbooks(url: str) -> str:

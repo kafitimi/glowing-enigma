@@ -1,22 +1,20 @@
 # LibreOffice
 .~lock.*
 
-# Рабочие учебные планы
+# Данные
+/db.sqlite3
+*.docx
 *.plx
+*.txt
+*.yaml
 
 # Скомпилированные python-скрипты
 *.pyc
-
-# Сгенерированные файлы
-*.txt
-*.docx
-
-# Описания курсов обучения
-*.yaml
 
 # IDE
 .idea/
 .vscode/
 
 # Виртуальное окружение
+node_modules/
 venv/

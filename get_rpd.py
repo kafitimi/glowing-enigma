@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from docx.table import Table
 from docxtpl import DocxTemplate
 
-from core import Course, EducationPlan, Subject, CT_EXAM, CT_CREDIT_GRADE, CT_CREDIT
+import core
 
 BACHELOR = 1
 MASTER = 2
@@ -72,44 +72,23 @@ def check_args() -> None:
         sys.exit()
 
 
-def get_course(course_filename: str) -> Course:
+def get_course(course_filename: str) -> core.Course:
     """ Открываем курс обучения """
     try:
-        course = Course(course_filename)
+        course = core.Course(course_filename)
     except OSError:
         print('Не могу открыть курс обучения' % course_filename)
         sys.exit()
     return course
 
 
-def get_plan(plan_filename: str) -> EducationPlan:
-    """ Читаем учебный план """
-    try:
-        plan = EducationPlan(plan_filename)
-    except OSError:
-        print('Не могу открыть учебный план %s' % plan_filename)
-        sys.exit()
-    return plan
-
-
-def get_subject(plan: EducationPlan, course: Course) -> Subject:
+def get_subject(plan: core.EducationPlan, course: core.Course) -> core.Subject:
     """ Ищем подходящую дисциплину в учебном плане """
     result = plan.find_subject(course.names)
     if result is None:
         print('Не могу найти подходящую дисциплину в учебном плане')
         sys.exit()
     return result
-
-
-def get_template() -> DocxTemplate:
-    """ Читаем шаблон РПД """
-    template_filename = 'rpd.docx'
-    try:
-        template = DocxTemplate(template_filename)
-    except OSError:
-        print('Не могу открыть шаблон')
-        sys.exit()
-    return template
 
 
 def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
@@ -206,12 +185,12 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y, control)
-    if CT_EXAM in control:
+    if core.CT_EXAM in control:
         levels = [
             ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
             ('Минимальный', 'Удовлетворительно'), ('Не освоены', 'Неудовлетворительно'),
         ]
-    elif CT_CREDIT_GRADE in control:
+    elif core.CT_CREDIT_GRADE in control:
         levels = [
             ('Высокий', 'Зачтено (отлично)'), ('Базовый', 'Не зачтено (хорошо)'),
             ('Минимальный', 'Зачтено (удовлетворительно)'), ('Не освоены', 'Не зачтено'),
@@ -256,7 +235,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         table.cell(start_row, 3).merge(table.cell(start_row + len(levels) - 1, 3))
         add_table_cell(table, start_row, 3, CENTER, level)
         table.cell(start_row, 4).merge(table.cell(start_row + len(levels) - 1, 4))
-        if CT_CREDIT in control:
+        if core.CT_CREDIT in control:
             if level == 'Освоено':
                 add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
@@ -312,7 +291,7 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     subject = context['subject']
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y, control)
-    if CT_EXAM in control:
+    if core.CT_EXAM in control:
         remove_table(template, credit_table)
     else:
         remove_table(template, exam_table)
@@ -321,11 +300,11 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
 def main() -> None:
     """ Точка входа """
     check_args()
-    plan = get_plan(sys.argv[1])
+    plan = core.get_plan(sys.argv[1])
     course = get_course(sys.argv[2])
     subject = get_subject(plan, course)
     links_before, links_after = plan.find_dependencies(subject, course)
-    template = get_template()
+    template = core.get_template('rpd.docx')
     context = {
         'course': course,
         'plan': plan,
