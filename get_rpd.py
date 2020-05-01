@@ -232,9 +232,9 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     # Уровни освоения
     start_row = 2
     for level, grade in levels:
-        table.cell(start_row, 3).merge(table.cell(start_row + len(levels) - 1, 3))
+        table.cell(start_row, 3).merge(table.cell(start_row + len(subject.competencies) - 1, 3))
         add_table_cell(table, start_row, 3, CENTER, level)
-        table.cell(start_row, 4).merge(table.cell(start_row + len(levels) - 1, 4))
+        table.cell(start_row, 4).merge(table.cell(start_row + len(subject.competencies) - 1, 4))
         if core.CT_CREDIT in control:
             if level == 'Освоено':
                 add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
@@ -261,7 +261,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
                 add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
-        table.cell(start_row, 5).merge(table.cell(start_row + len(levels) - 1, 5))
+        table.cell(start_row, 5).merge(table.cell(start_row + len(subject.competencies) - 1, 5))
         add_table_cell(table, start_row, 5, CENTER, grade)
         start_row += len(subject.competencies)
 
