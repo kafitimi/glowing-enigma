@@ -453,7 +453,10 @@ class Course:
 
     def __init__(self, filename: str):
         with open(filename, encoding='UTF-8') as input_file:
-            data = yaml.load(input_file, Loader=yaml.CLoader)
+            try:
+                data = yaml.load(input_file, Loader=yaml.CLoader)
+            except AttributeError:
+                data = yaml.load(input_file, Loader=yaml.Loader)
         self.names = [set(name) for name in data['названия']]
         self.authors = data['авторы']
         self.year = data['год']

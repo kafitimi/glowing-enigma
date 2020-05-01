@@ -2,12 +2,21 @@
 
 ## Как подготовить к работе
 
-Откройте командную строку и последовательно выполните следующие команды:
+Если вы работаете в ОС Windows, откройте командную строку и последовательно выполните следующие команды:
 
 ```batch
 python -m venv venv
 venv\scripts\activate
 pip install -r requirements.txt
+```
+
+Если вы работаете в Google Colab, выполните следующий блок:
+
+```python
+!git clone https://github.com/kafitimi/glowing-enigma.git
+import os
+os.chdir('glowing-enigma')
+!pip install -r requirements.txt
 ```
 
 ## Как сгенерировать матрицу компетенций
