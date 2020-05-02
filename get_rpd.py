@@ -1,7 +1,6 @@
 """ Генерация РПД """
 import functools
 import sys
-from copy import deepcopy
 from typing import List, Dict, Any
 
 from docx.table import Table
@@ -9,49 +8,15 @@ from docxtpl import DocxTemplate
 
 import core
 
-BACHELOR = 1
-MASTER = 2
-
-CENTER = 'Table Heading'
-JUSTIFY = 'Table Contents'
-
-
-def add_table_cell(table: Table, row: int, col: int, style: str, text: str) -> None:
-    """ Добавить текст в ячейку таблицы """
-    cell = table.cell(row, col)
-    if cell.text:
-        cell.add_paragraph(text, style)
-    else:
-        cell.text = text
-        cell.paragraphs[0].style = style
-
 
 def fill_table_column(table: Table, row: int, columns: List[int], values: List[Any]) -> None:
     """ Заполнить колонку таблицу """
     for value in values:
         str_value = str_or_dash(value)
         for col in columns:
-            style = CENTER if len(str_value) < 5 else JUSTIFY
-            add_table_cell(table, row, col, style, str_value)
+            style = core.CENTER if len(str_value) < 5 else core.JUSTIFY
+            core.set_cell_text(table, row, col, style, str_value)
         row += 1
-
-
-def add_table_rows(table: Table, rows: int) -> None:
-    """ Добавить строки в таблицу """
-    table_element = table._element  # pylint: disable=protected-access
-    borders = table_element.find('.//{{{w}}}tcBorders'.format(**table_element.nsmap))
-    for _ in range(rows):
-        new_row = table.add_row()
-        for cell in new_row.cells:
-            cell._element[0].append(deepcopy(borders))  # pylint: disable=protected-access
-
-
-def remove_table(template: DocxTemplate, table_index: int) -> None:
-    """ Удаляем из шаблона таблицу по её индексу """
-    docx = template.get_docx()
-    table_element = docx.tables[table_index]._element  # pylint: disable=protected-access
-    parent_element = table_element.getparent()
-    parent_element.remove(table_element)
 
 
 def distribute(total: int, portions: int) -> List[int]:
@@ -94,32 +59,33 @@ def get_subject(plan: core.EducationPlan, course: core.Course) -> core.Subject:
 def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу с компетенциями в разделе 1.2 """
     table = template.get_docx().tables[1]
-    add_table_rows(table, len(context['subject'].competencies))
+    core.add_table_rows(table, len(context['subject'].competencies))
 
     row = 0
-    for code in sorted(context['subject'].competencies):
+    competencies = [context['plan'].competence_codes[c] for c in context['subject'].competencies]
+    for competence in sorted(competencies, key=core.Competence.repr):
         row += 1
-        competence = context['plan'].competence_codes[code]
-        add_table_cell(table, row, 0, CENTER, competence.category)
-        add_table_cell(table, row, 1, JUSTIFY, competence.code + ' ' + competence.description)
-        add_table_cell(table, row, 4, CENTER, context['course'].assessment)
+        core.set_cell_text(table, row, 0, core.CENTER, competence.category)
+        core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
+        core.set_cell_text(table, row, 4, core.CENTER, context['course'].assessment)
 
         for ind_code in sorted(competence.indicator_codes):
             indicator = competence.indicator_codes[ind_code]
-            add_table_cell(table, row, 2, JUSTIFY, ind_code + ' ' + indicator.description)
+            core.set_cell_text(table, row, 2, core.JUSTIFY, ind_code + ' ' + indicator.description)
 
     def add_study_results(attr: str, caption: str) -> None:
         """ Добавить в ячейку таблицы результаты обучения """
         results = context['course'].__getattribute__(attr)
         if results:
-            add_table_cell(table, 1, 3, JUSTIFY, caption)
+            core.set_cell_text(table, 1, 3, core.JUSTIFY, caption)
             for elem in results:
-                add_table_cell(table, 1, 3, 'Table List', '•\t' + elem)
+                core.set_cell_text(table, 1, 3, 'Table List', '•\t' + elem)
 
     table.cell(1, 3).merge(table.cell(row, 3))
     add_study_results('knowledges', 'Знать:')
     add_study_results('abilities', 'Уметь:')
     add_study_results('skills', 'Владеть:')
+    core.fix_table_borders(table)
 
 
 def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
@@ -140,7 +106,7 @@ def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
 
     # Заполняем таблицу
     table = template.get_docx().tables[4]
-    add_table_rows(table, themes_count + 1)  # последняя строка - для итога
+    core.add_table_rows(table, themes_count + 1)  # последняя строка - для итога
     fill_table_column(table, 2, [0], themes + ['Всего часов'])
     fill_table_column(table, 2, [1], totals + [subject.get_total_hours()])
     fill_table_column(table, 2, [2], lectures + [sum(lectures)])
@@ -149,6 +115,7 @@ def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
     fill_table_column(table, 2, [10], controls + [sum(controls)])
     fill_table_column(table, 2, [11], homeworks + [sum(homeworks)])
     fill_table_column(table, 2, [3, 5, 7, 8, 9], [0] * (themes_count + 1))  # пустые значения
+    core.fix_table_borders(table)
 
 
 def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
@@ -159,7 +126,7 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
     homeworks = distribute(subject.get_hours('homeworks'), themes_count)
 
     table = template.get_docx().tables[5]
-    add_table_rows(table, themes_count + 1)  # последняя строка - для итога
+    core.add_table_rows(table, themes_count + 1)  # последняя строка - для итога
 
     hw_text = "Проработка теоретического материала, подготовка к выполнению лабораторной работы"
     hw_control = "Вопросы к итоговому тесту"
@@ -167,15 +134,16 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
     i = 0
     for theme in themes:
         i += 1
-        add_table_cell(table, i, 0, CENTER, str(i))
-        add_table_cell(table, i, 1, CENTER, theme['тема'])
-        add_table_cell(table, i, 2, CENTER, hw_text)
-        add_table_cell(table, i, 3, CENTER, str_or_dash(homeworks[i-1]))
-        add_table_cell(table, i, 4, CENTER, hw_control)
+        core.set_cell_text(table, i, 0, core.CENTER, str(i))
+        core.set_cell_text(table, i, 1, core.CENTER, theme['тема'])
+        core.set_cell_text(table, i, 2, core.CENTER, hw_text)
+        core.set_cell_text(table, i, 3, core.CENTER, str_or_dash(homeworks[i - 1]))
+        core.set_cell_text(table, i, 4, core.CENTER, hw_control)
 
     i += 1
-    add_table_cell(table, i, 1, JUSTIFY, 'Всего часов')
-    add_table_cell(table, i, 3, CENTER, str_or_dash(sum(homeworks)))
+    core.set_cell_text(table, i, 1, core.JUSTIFY, 'Всего часов')
+    core.set_cell_text(table, i, 3, core.CENTER, str_or_dash(sum(homeworks)))
+    core.fix_table_borders(table)
 
 
 def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
@@ -201,18 +169,18 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     # Строки таблицы
     table = template.get_docx().tables[6]
     rows_count = len(subject.competencies) * len(levels)
-    add_table_rows(table, rows_count)
+    core.add_table_rows(table, rows_count)
 
     # Компетенции и индикаторы
     start_row = 2
     for code in subject.competencies:
         competence = context['plan'].competence_codes[code]
         table.cell(start_row, 0).merge(table.cell(start_row + len(levels) - 1, 0))
-        add_table_cell(table, start_row, 0, JUSTIFY, competence.code + ' ' + competence.description)
+        core.set_cell_text(table, start_row, 0, core.JUSTIFY, competence.code + ' ' + competence.description)
         table.cell(start_row, 1).merge(table.cell(start_row + len(levels) - 1, 1))
         for ind_code in sorted(competence.indicator_codes):
             indicator = competence.indicator_codes[ind_code]
-            add_table_cell(table, start_row, 1, JUSTIFY, ind_code + ' ' + indicator.description)
+            core.set_cell_text(table, start_row, 1, core.JUSTIFY, ind_code + ' ' + indicator.description)
         start_row += len(levels)
 
     # Знать, уметь, владеть
@@ -220,9 +188,9 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         """ Добавить в ячейку таблицы результаты обучения """
         results = course.__getattribute__(attr)
         if results:
-            add_table_cell(table, row, col, JUSTIFY, caption)
+            core.set_cell_text(table, row, col, core.JUSTIFY, caption)
             for elem in results:
-                add_table_cell(table, row, col, 'Table List', '•\t' + elem)
+                core.set_cell_text(table, row, col, 'Table List', '•\t' + elem)
     start_row = 2
     table.cell(start_row, 2).merge(table.cell(start_row + rows_count - 1, 2))
     add_study_results('knowledges', 'Знать:', 2, 2)
@@ -233,7 +201,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     start_row = 2
     for level, grade in levels:
         table.cell(start_row, 3).merge(table.cell(start_row + len(subject.competencies) - 1, 3))
-        add_table_cell(table, start_row, 3, CENTER, level)
+        core.set_cell_text(table, start_row, 3, core.CENTER, level)
         table.cell(start_row, 4).merge(table.cell(start_row + len(subject.competencies) - 1, 4))
         if core.CT_CREDIT in control:
             if level == 'Освоено':
@@ -262,27 +230,30 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
         table.cell(start_row, 5).merge(table.cell(start_row + len(subject.competencies) - 1, 5))
-        add_table_cell(table, start_row, 5, CENTER, grade)
+        core.set_cell_text(table, start_row, 5, core.CENTER, grade)
         start_row += len(subject.competencies)
+
+    core.fix_table_borders(table)
 
 
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу со ссылками на литературу в разделе 7 """
     def append_table_7_section(caption, books):
         rows_count = len(table.rows)
-        add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
+        core.add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
         table.cell(rows_count, 0).merge(table.cell(rows_count, 4))
-        add_table_cell(table, rows_count, 0, CENTER, caption)
+        core.set_cell_text(table, rows_count, 0, core.CENTER, caption)
         for i, book in enumerate(books):
-            add_table_cell(table, rows_count + i + 1, 0, CENTER, str(i + 1))
-            add_table_cell(table, rows_count + i + 1, 1, CENTER, book['гост'])
-            add_table_cell(table, rows_count + i + 1, 2, CENTER, book['гриф'])
-            add_table_cell(table, rows_count + i + 1, 3, CENTER, book['экз'])
-            add_table_cell(table, rows_count + i + 1, 4, CENTER, book['эбс'])
+            core.set_cell_text(table, rows_count + i + 1, 0, core.CENTER, str(i + 1))
+            core.set_cell_text(table, rows_count + i + 1, 1, core.CENTER, book['гост'])
+            core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book['гриф'])
+            core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
+            core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
 
     table = template.get_docx().tables[7]
     append_table_7_section('Основная литература', context['course'].primary_books)
     append_table_7_section('Дополнительная литература', context['course'].secondary_books)
+    core.fix_table_borders(table)
 
 
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
@@ -292,9 +263,9 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y, control)
     if core.CT_EXAM in control:
-        remove_table(template, credit_table)
+        core.remove_table(template, credit_table)
     else:
-        remove_table(template, exam_table)
+        core.remove_table(template, exam_table)
 
 
 def main() -> None:

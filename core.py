@@ -2,7 +2,7 @@
 import json
 import re
 import sys
-from dataclasses import dataclass
+from copy import deepcopy
 from http import HTTPStatus
 from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
@@ -11,6 +11,7 @@ from xml.etree.ElementTree import Element
 import requests
 import yaml
 from bs4 import BeautifulSoup
+from docx.table import Table
 from docxtpl import R, RichText, DocxTemplate
 
 NAMESPACES = {
@@ -18,6 +19,9 @@ NAMESPACES = {
     'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
     'mmisdb': 'http://tempuri.org/dsMMISDB.xsd',
 }
+
+BACHELOR = 2
+MASTER = 3
 
 HOURS_PER_CREDIT = 36
 
@@ -36,6 +40,9 @@ CT_COURSEWORK = 'КП'
 
 IPRBOOKS = 'http://www.iprbookshop.ru'
 LANBOOK = 'http://e.lanbook.com'
+
+CENTER = 'Table Heading'
+JUSTIFY = 'Table Contents'
 
 
 def get_plan(plan_filename: str) -> 'EducationPlan':
@@ -56,6 +63,40 @@ def get_template(filename: str) -> DocxTemplate:
         print('Не могу открыть шаблон')
         sys.exit()
     return template
+
+
+def set_cell_text(table: Table, row: int, col: int, style: str, text: str) -> None:
+    """ Добавить текст в ячейку таблицы """
+    cell = table.cell(row, col)
+    if cell.text:
+        cell.add_paragraph(text, style)
+    else:
+        cell.text = text
+        cell.paragraphs[0].style = style
+
+
+def add_table_rows(table: Table, rows: int) -> None:
+    """ Добавить строки в таблицу """
+    for _ in range(rows):
+        table.add_row()
+
+
+def remove_table(template: DocxTemplate, table_index: int) -> None:
+    """ Удаляем таблицу из шаблона по её индексу """
+    docx = template.get_docx()
+    table_element = docx.tables[table_index]._element  # pylint: disable=protected-access
+    parent_element = table_element.getparent()
+    parent_element.remove(table_element)
+
+
+def fix_table_borders(table: Table) -> None:
+    """ Установим границы ячейк по образцу из первой ячейки """
+    # TODO: По пока неясной причине не проставляется правая граница
+    table_element = table._element  # pylint: disable=protected-access
+    borders = table_element.find('.//{{{w}}}tcBorders'.format(**table_element.nsmap))
+    for row in table.rows:
+        for cell in row.cells:
+            cell._element[0].append(deepcopy(borders))  # pylint: disable=protected-access
 
 
 def get_book_from_iprbooks(url: str) -> str:
@@ -145,18 +186,14 @@ def append_lanbook(books: List[Dict[str, Any]], keywords: List[str], max_count: 
         })
 
 
-@dataclass
 class Base:
     """ Базовый класс данных """
-    key: str
-    code: str
-
-    def __init__(self, _: Element = None, key='', code=''):
+    def __init__(self, _: Element = None, key: str = '', code: str = ''):
         self.key = key
         self.code = code
 
     @classmethod
-    def get_dicts(cls, elem_name: str, elem: Element) -> '(Dict[str, cls], Dict[str, cls])':
+    def get_dicts(cls, elem_name: str, elem: Element) -> 'Tuple[Dict[str, Base], Dict[str, Base]]':
         """ Получить словари с доступом по коду и шифру """
         dict1, dict2 = {}, {}
 
@@ -174,17 +211,14 @@ class Base:
         return dict1, dict2
 
 
-@dataclass
 class Indicator(Base):
     """ Индикатор компетенции """
-    description: str
 
     def __init__(self, elem: Element):
         super().__init__(key=elem.get('Код'), code=elem.get('ШифрКомпетенции'))
-        self.description = elem.get('Наименование')
+        self.description: str = elem.get('Наименование')
 
 
-@dataclass
 class Competence(Indicator):
     """ Компетенция """
     indicator_keys: Dict[str, Indicator]
@@ -193,6 +227,7 @@ class Competence(Indicator):
     def __init__(self, elem: Element):
         super().__init__(elem)
         self.indicator_keys, self.indicator_codes = Indicator.get_dicts('ПланыКомпетенции', elem)
+        self.subjects: Set[str] = set()
 
     @property
     def category(self) -> str:
@@ -207,7 +242,7 @@ class Competence(Indicator):
         return result
 
     @staticmethod
-    def repr(competence):
+    def repr(competence: 'Competence'):
         """ Для передачи в качестве ключа сортировки """
         result = 0, ''
         if competence.code.startswith('УК-'):
@@ -219,35 +254,25 @@ class Competence(Indicator):
         return result
 
 
-@dataclass
 class SemesterWork:
     """ Трудоемкость """
-    lectures: int  # часов на лекции
-    labworks: int  # часов на лаб. раб
-    practices: int  # часов на пр. раб
-    controls: int  # часов на КСР
-    homeworks: int  # часов на СРС
-    exams: int  # часов на экзамен
-    control: set  # типы контроля
-
     def __init__(self):
-        self.lectures = self.labworks = self.practices = 0
-        self.controls = self.homeworks = self.exams = 0
-        self.control = set()
+        self.lectures = 0  # лекции
+        self.labworks = 0  # лабораторные работы
+        self.practices = 0  # практические занятия
+        self.homeworks = 0  # самостоятельная работа студентов (СРС)
+        self.controls = 0  # контроль самостоятельной работы (КСР)
+        self.exams = 0  # часы на экзамен
+        self.control: Set[str] = set()  # формы контроля
 
 
-@dataclass
 class Subject(Base):
     """ Дисциплина """
-    name: str
-    semesters: Dict[int, SemesterWork]
-    competencies: Set[str]
-
     def __init__(self, elem: Element):
         super().__init__(key=elem.get('Код'), code=elem.get('ДисциплинаКод'))
-        self.name = elem.get('Дисциплина')
-        self.semesters = dict()
-        self.competencies = set()
+        self.name: str = elem.get('Дисциплина')
+        self.semesters: Dict[int, SemesterWork] = dict()
+        self.competencies: Set[str] = set()
 
     def get_controls(self) -> str:
         """ Формы контроля для печати """
@@ -269,7 +294,7 @@ class Subject(Base):
         semesters = [str((semester + 1) // 2) for semester in self.semesters.keys()]
         return ', '.join(sorted(set(semesters)))
 
-    def get_hours(self, attr) -> int:
+    def get_hours(self, attr: str) -> int:
         """ Сумма часов определенного типа """
         return sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
 
@@ -307,34 +332,31 @@ class Subject(Base):
         return result
 
     @staticmethod
-    def repr(competence):
+    def repr(subject: 'Subject'):
         """ Для передачи в качестве ключа сортировки """
+        # TODO: Привести к единому типу данных
         result = 0, ''
-        if competence.code.startswith('Б1.О.'):
-            result = 1, int(competence.code[5:])
-        elif competence.code.startswith('Б1.В.ДВ.'):
-            result = 3, float(competence.code[8:])
-        elif competence.code.startswith('Б1.В.'):
-            result = 2, int(competence.code[5:])
-        elif competence.code.startswith('Б1.В.ОД.'):
-            result = 2, int(competence.code[8:])
-        elif competence.code.startswith('Б2.'):
+        if subject.code.startswith('Б1.О.'):
+            result = 1, int(subject.code[5:])
+        elif subject.code.startswith('Б1.В.ДВ.'):
+            result = 3, float(subject.code[8:])
+        elif subject.code.startswith('Б1.В.'):
+            result = 2, int(subject.code[5:])
+        elif subject.code.startswith('Б1.В.ОД.'):
+            result = 2, int(subject.code[8:])
+        elif subject.code.startswith('Б2.'):
             alphabet = '1234567890.'
-            code = filter(lambda c: c in alphabet, competence.code[3:])
+            code = filter(lambda c: c in alphabet, subject.code[3:])
             result = 4, float(''.join(list(code)))
-        elif competence.code.startswith('Б3'):
+        elif subject.code.startswith('Б3'):
             result = 5, 0
-        elif competence.code.startswith('ФТД'):
+        elif subject.code.startswith('ФТД'):
             result = 6, 0
         return result
 
 
-@dataclass
 class EducationPlan:
     """ Рабочий учебный план """
-    code: str
-    name: str
-    program: str
     competence_keys: Dict[str, Competence]
     competence_codes: Dict[str, Competence]
     subject_keys: Dict[str, Subject]
@@ -345,15 +367,16 @@ class EducationPlan:
         plan = root.find('./{{{diffgr}}}diffgram/{{{mmisdb}}}dsMMISDB'.format(**NAMESPACES))
         oop1 = plan.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
         oop2 = oop1.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
-        self.code = oop1.get('Шифр')
-        self.name = oop1.get('Название')
-        self.program = '' if oop2 is None else oop2.get('Название')
+        self.code: str = oop1.get('Шифр')
+        self.name: str = oop1.get('Название')
+        self.degree = int(oop1.get('Квалификация'))
+        self.program: str = '' if oop2 is None else oop2.get('Название')
         self.competence_keys, self.competence_codes = Competence.get_dicts('ПланыКомпетенции', plan)
         self.subject_keys, self.subject_codes = Subject.get_dicts('ПланыСтроки', plan)
         self.read_hours(plan)
         self.read_links(plan)
 
-    def read_hours(self, elem: Element):
+    def read_hours(self, elem: Element) -> None:
         """ Прочитать часы по дисциплинам """
         wt_abbr = {}
         path = './{{{mmisdb}}}{0}'.format('СправочникВидыРабот', **NAMESPACES)
@@ -370,9 +393,9 @@ class EducationPlan:
             else:
                 pass  # Нужно проверить другие типы часов
 
-    def read_work_hours(self, elem: Element, work_type: str):
+    def read_work_hours(self, elem: Element, work_type: str) -> None:
         """ Прочитать рабочие часы по дисциплинам """
-        code = elem.get('КодОбъекта')
+        code: str = elem.get('КодОбъекта')
         subject = self.subject_keys[code]
         semester = 2 * (int(elem.get('Курс')) - 1) + int(elem.get('Семестр'))
         if semester not in subject.semesters:
@@ -393,12 +416,13 @@ class EducationPlan:
         elif work_type in (CT_CREDIT, CT_CREDIT_GRADE, CT_EXAM, CT_COURSEWORK):
             obj.control.add(work_type)
 
-    def read_links(self, elem: Element):
+    def read_links(self, elem: Element) -> None:
         """ Прочитать связи дисциплин с компетенциями """
         path = './{{{mmisdb}}}{0}'.format('ПланыКомпетенцииДисциплины', **NAMESPACES)
         for sub_elem in elem.findall(path):
             competence = self.competence_keys[sub_elem.get('КодКомпетенции')]
             subject = self.subject_keys[sub_elem.get('КодСтроки')]
+            competence.subjects.add(subject.code)
             subject.competencies.add(competence.code)
 
     def find_subject(self, course_names: List[Set[str]]) -> Subject:
@@ -429,60 +453,40 @@ class EducationPlan:
         return ', '.join(before), ', '.join(after)
 
 
-@dataclass
 class Course:
     """ Курс обучения """
-    names: List[Set[str]]
-    year: int
-    authors: List[str]
-    goal: str
-    goals: List[str]
-    content: str
-    knowledges: List[str]
-    abilities: List[str]
-    skills: List[str]
-    links: List[Set[str]]
-    assessment: List[str]
-    themes: List[Dict[str, Union[str, RichText]]]
-    controls: List[Dict[str, Union[str, List[str], RichText]]]
-    primary_books: List[Dict[str, Any]]
-    secondary_books: List[Dict[str, Any]]
-    websites: List[str]
-    software: List[str]
-    infosystems: List[str]
-
     def __init__(self, filename: str):
         with open(filename, encoding='UTF-8') as input_file:
             try:
                 data = yaml.load(input_file, Loader=yaml.CLoader)
             except AttributeError:
                 data = yaml.load(input_file, Loader=yaml.Loader)
-        self.names = [set(name) for name in data['названия']]
-        self.authors = data['авторы']
-        self.year = data['год']
+        self.names: List[Set[str]] = [set(name) for name in data['названия']]
+        self.authors: List[str] = data['авторы']
+        self.year: int = data['год']
         if 'цель' in data:
-            self.goal = data['цель']
+            self.goal: str = data['цель']
         if 'цели' in data:
-            self.goals = data['цели']
-        self.content = data['содержание']
-        self.knowledges = data['знать']
-        self.abilities = data['уметь']
-        self.skills = data['владеть']
-        self.links = [set(name) for name in data['связи']]
-        self.assessment = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
-        self.themes = data['темы']
+            self.goals: List[str] = data['цели']
+        self.content: str = data['содержание']
+        self.knowledges: List[str] = data['знать']
+        self.abilities: List[str] = data['уметь']
+        self.skills: List[str] = data['владеть']
+        self.links: List[Set[str]] = [set(name) for name in data['связи']]
+        self.assessment: List[str] = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
+        self.themes: List[Dict[str, Union[str, RichText]]] = data['темы']
         for item in self.themes:
             item['содержание'] = R(item['содержание'].replace('\n', '\a'))
-        self.controls = data.get('контроль', [])
+        self.controls: List[Dict[str, Union[str, List[str], RichText]]] = data.get('контроль', [])
         for item in self.controls:
             item['подзаголовок'] = R(item['подзаголовок'].replace('\n', '\a'), style='Подзаголовок')
             item['содержание'] = R(item['содержание'].replace('\n', '\a'))
         self.websites = data.get('интернет-сайты', ['Поисковая система Google https://www.google.com/'])
-        self.software = data.get('программное обеспечение', [])
-        self.infosystems = data.get('информационные системы', [])
+        self.software: List[str] = data.get('программное обеспечение', [])
+        self.infosystems: List[str] = data.get('информационные системы', [])
 
-        primary_books = data.get('основная литература', {})
-        self.primary_books = primary_books.get('ссылки', [])
+        primary_books: Dict[str, Any] = data.get('основная литература', {})
+        self.primary_books: List[Dict[str, Any]] = primary_books.get('ссылки', [])
         if 'iprbooks' in primary_books:
             iprbooks = primary_books['iprbooks']
             append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
@@ -490,8 +494,8 @@ class Course:
             lanbook = primary_books['лань']
             append_lanbook(self.primary_books, lanbook['запрос'], lanbook['количество'])
 
-        secondary_books = data.get('дополнительная литература', {})
-        self.secondary_books = secondary_books.get('ссылки', [])
+        secondary_books: Dict[str, Any] = data.get('дополнительная литература', {})
+        self.secondary_books: List[Dict[str, Any]] = secondary_books.get('ссылки', [])
         if 'iprbooks' in secondary_books:
             iprbooks = secondary_books['iprbooks']
             append_iprbooks(self.secondary_books, iprbooks['запрос'], iprbooks['количество'])
