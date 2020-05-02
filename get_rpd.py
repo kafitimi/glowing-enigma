@@ -291,6 +291,7 @@ def main() -> None:
     fill_table_7(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
+    print('Done')
 
 
 if __name__ == '__main__':

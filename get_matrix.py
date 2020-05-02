@@ -23,6 +23,7 @@ def main(plan_filename: str) -> None:
                 else:
                     result.append('')
             output_file.write('%s\n' % '\t'.join(result))
+    print('Done')
 
 
 if __name__ == '__main__':

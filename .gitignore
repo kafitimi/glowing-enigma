@@ -3,6 +3,7 @@
 
 # Данные
 /db.sqlite3
+*.doc
 *.docx
 *.plx
 *.txt
