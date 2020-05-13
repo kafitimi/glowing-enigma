@@ -3,6 +3,7 @@ import json
 import re
 import sys
 from copy import deepcopy
+from datetime import datetime
 from http import HTTPStatus
 from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
@@ -111,7 +112,7 @@ def get_book_from_iprbooks(url: str) -> str:
     return ''
 
 
-def get_links_from_iprbooks(keywords: List[str]) -> List[Tuple[int, str, str]]:
+def get_links_from_iprbooks(keywords: List[str]) -> List[Tuple[float, str, str]]:
     """ Найти книги в ЭБС IPRBooks по списку ключевых слов """
     count, page, result = 0, 1, []
     while True:
@@ -124,9 +125,10 @@ def get_links_from_iprbooks(keywords: List[str]) -> List[Tuple[int, str, str]]:
         soup = BeautifulSoup(content['data'], 'lxml')
         for tag in soup.find_all('div', class_='search-title'):
             link = tag.find('a', attrs={'target': '_blank'})
+            weight = len(tag.find_all('b', class_='fulltext_highlight')) + 1 / (1 + len(result))
             next_tag = tag.find_next_sibling()
             year = int(re.findall(r'\d{4}', next_tag.text)[0][:4])
-            result.append((year, link.text, link.attrs['href']))
+            result.append((year + weight, link.text, link.attrs['href']))
         if len(result) >= count:
             break
         page += 1
@@ -489,10 +491,18 @@ class Course:
         self.primary_books: List[Dict[str, Any]] = primary_books.get('ссылки', [])
         if 'iprbooks' in primary_books:
             iprbooks = primary_books['iprbooks']
-            append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
+            if isinstance(iprbooks, dict):
+                append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
+            if isinstance(iprbooks, list):
+                for iprbook in iprbooks:
+                    append_iprbooks(self.primary_books, iprbook['запрос'], iprbook['количество'])
         if 'лань' in primary_books:
-            lanbook = primary_books['лань']
-            append_lanbook(self.primary_books, lanbook['запрос'], lanbook['количество'])
+            lanbooks = primary_books['лань']
+            if isinstance(lanbooks, dict):
+                append_iprbooks(self.primary_books, lanbooks['запрос'], lanbooks['количество'])
+            if isinstance(lanbooks, list):
+                for lanbook in lanbooks:
+                    append_iprbooks(self.primary_books, lanbook['запрос'], lanbook['количество'])
 
         secondary_books: Dict[str, Any] = data.get('дополнительная литература', {})
         self.secondary_books: List[Dict[str, Any]] = secondary_books.get('ссылки', [])
