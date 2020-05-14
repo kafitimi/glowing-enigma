@@ -167,7 +167,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         levels = [('Освоено', 'Зачтено'), ('Не освоено', 'Не зачтено')]
 
     # Строки таблицы
-    table = template.get_docx().tables[6]
+    table = template.get_docx().tables[8]
     rows_count = len(subject.competencies) * len(levels)
     core.add_table_rows(table, rows_count)
 
@@ -250,7 +250,7 @@ def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
             core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
             core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
 
-    table = template.get_docx().tables[7]
+    table = template.get_docx().tables[9]
     append_table_7_section('Основная литература', context['course'].primary_books)
     append_table_7_section('Дополнительная литература', context['course'].secondary_books)
     core.fix_table_borders(table)
@@ -283,12 +283,12 @@ def main() -> None:
         'links_before': links_before,
         'links_after': links_after,
     }
-    remove_extra_table_5(template, context)
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
     fill_table_4(template, context)
     fill_table_6_1(template, context)
     fill_table_7(template, context)
+    remove_extra_table_5(template, context)
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
     print('Done')
