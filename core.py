@@ -478,11 +478,11 @@ class Course:
         self.assessment: List[str] = data.get('оценочные средства', 'Лабораторные работы, тестовые вопросы')
         self.themes: List[Dict[str, Union[str, RichText]]] = data['темы']
         for item in self.themes:
-            item['содержание'] = R(item['содержание'].replace('\n', '\a'))
+            item['содержание'] = R(item['содержание'].replace('\n', '\a'), style='Абзац списка')
         self.controls: List[Dict[str, Union[str, List[str], RichText]]] = data.get('контроль', [])
         for item in self.controls:
             item['подзаголовок'] = R(item['подзаголовок'].replace('\n', '\a'), style='Подзаголовок')
-            item['содержание'] = R(item['содержание'].replace('\n', '\a'))
+            item['содержание'] = R(item['содержание'].replace('\n', '\a'), style='Абзац списка')
         self.websites = data.get('интернет-сайты', ['Поисковая система Google https://www.google.com/'])
         self.software: List[str] = data.get('программное обеспечение', [])
         self.infosystems: List[str] = data.get('информационные системы', [])
