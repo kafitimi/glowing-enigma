@@ -243,9 +243,24 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
 
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
-    """ Вставляем таблицу со ссылками на литературу в разделе 7 из сканов"""
-    pass
-
+    """ Заполняем таблицу со ссылками на литературу в разделе 7 """
+    if context['lit_images']:
+        return  # вместо таблицы будет скан страницы с печатью
+    def append_table_7_section(caption, books):
+        rows_count = len(table.rows)
+        core.add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
+        table.cell(rows_count, 0).merge(table.cell(rows_count, 4))
+        core.set_cell_text(table, rows_count, 0, core.CENTER, caption)
+        for i, book in enumerate(books):
+            core.set_cell_text(table, rows_count + i + 1, 0, core.CENTER, str(i + 1))
+            core.set_cell_text(table, rows_count + i + 1, 1, core.CENTER, book['гост'])
+            core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book['гриф'])
+            core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
+            core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
+    table = template.get_docx().tables[9]
+    append_table_7_section('Основная литература', context['course'].primary_books)
+    append_table_7_section('Дополнительная литература', context['course'].secondary_books)
+    core.fix_table_borders(table)
 
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     """ Удаляем лишнюю таблицу из раздела 5 """
@@ -261,14 +276,16 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
 def get_lit_images(template: DocxTemplate, subject: core.Subject, lit_dir: str) -> list:
     """ Поиск картинок литературы для дисциплины"""
     lit_images = []
-    lit_filenames = glob.glob(os.path.join(lit_dir,'*'))
-    subj_names = {fn: ' '.join(os.path.basename(fn).split()[:-2]) for fn in lit_filenames}
-    dists = [(fn, levenshtein_d(subject.name, subj_names[fn])) for fn in subj_names]
     try:
+        lit_filenames = glob.glob(os.path.join(lit_dir, '*'))
+        subj_names = {fn: ' '.join(os.path.basename(fn).split()[:-2]) for fn in lit_filenames}
+        dists = [(fn, levenshtein_d(subject.name, subj_names[fn])) for fn in subj_names]
         best = min(dists, key=itemgetter(1))
+        lit_images = glob.glob(os.path.join(lit_dir, subj_names[best[0]]+'*'))
         if best[1]/len(subject.name) > 0.3:
             print(f'Подозрительный файл литературы: {best[0]}')
-        lit_images = glob.glob(os.path.join(lit_dir, subj_names[best[0]]+'*'))
+        else:
+            print('Файлы сканов литературы: ' + ' '.join(lit_images))
     except:
         pass
     return [InlineImage(template, fn, width=Mm(173)) for fn in sorted(lit_images)]
@@ -278,8 +295,9 @@ def main() -> None:
     """ Точка входа """
     parser = argparse.ArgumentParser()
     parser.add_argument('plan', type=str, help='PLX-файл РУПа')
-    parser.add_argument('course', type=str, help='YAML-файл-курса')
-    parser.add_argument('lit_dir', type=str, help='Папка со сканами литературы')
+    parser.add_argument('course', type=str, help='YAML-файл курса')
+    parser.add_argument('-t', '--title_dir', type=str, help='Папка со сканами титульных листов')
+    parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
     args = parser.parse_args()
     plan = core.get_plan(args.plan)
     course = get_course(args.course)
