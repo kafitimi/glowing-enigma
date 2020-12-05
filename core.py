@@ -8,6 +8,7 @@ from http import HTTPStatus
 from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
+import unicodedata
 
 import requests
 import yaml
@@ -463,6 +464,9 @@ class Course:
                 data = yaml.load(input_file, Loader=yaml.CLoader)
             except AttributeError:
                 data = yaml.load(input_file, Loader=yaml.Loader)
+        for name in data['названия']:
+            for i,word in enumerate(name):
+                name[i] = unicodedata.normalize('NFC', word)
         self.names: List[Set[str]] = [set(name) for name in data['названия']]
         self.authors: List[str] = data['авторы']
         self.year: int = data['год']
