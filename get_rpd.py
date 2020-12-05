@@ -2,9 +2,15 @@
 import functools
 import sys
 from typing import List, Dict, Any
+import argparse
+import glob
+import os
+from Levenshtein import distance as levenshtein_d
+from operator import itemgetter
 
 from docx.table import Table
-from docxtpl import DocxTemplate
+from docx.shared import Mm
+from docxtpl import DocxTemplate, InlineImage
 
 import core
 
@@ -152,7 +158,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
     # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y, control)
+    control = functools.reduce(lambda x, y: x + y if type(x)==list else set.union(x,y), control)
     if core.CT_EXAM in control:
         levels = [
             ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
@@ -237,23 +243,8 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
 
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
-    """ Заполняем таблицу со ссылками на литературу в разделе 7 """
-    def append_table_7_section(caption, books):
-        rows_count = len(table.rows)
-        core.add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
-        table.cell(rows_count, 0).merge(table.cell(rows_count, 4))
-        core.set_cell_text(table, rows_count, 0, core.CENTER, caption)
-        for i, book in enumerate(books):
-            core.set_cell_text(table, rows_count + i + 1, 0, core.CENTER, str(i + 1))
-            core.set_cell_text(table, rows_count + i + 1, 1, core.CENTER, book['гост'])
-            core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book['гриф'])
-            core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
-            core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
-
-    table = template.get_docx().tables[9]
-    append_table_7_section('Основная литература', context['course'].primary_books)
-    append_table_7_section('Дополнительная литература', context['course'].secondary_books)
-    core.fix_table_borders(table)
+    """ Вставляем таблицу со ссылками на литературу в разделе 7 из сканов"""
+    pass
 
 
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
@@ -261,27 +252,48 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     exam_table, credit_table = 6, 7
     subject = context['subject']
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y, control)
+    control = functools.reduce(lambda x, y: x + y if type(x)==list else set.union(x,y), control)
     if core.CT_EXAM in control:
         core.remove_table(template, credit_table)
     else:
         core.remove_table(template, exam_table)
 
+def get_lit_images(template: DocxTemplate, subject: core.Subject, lit_dir: str) -> list:
+    """ Поиск картинок литературы для дисциплины"""
+    lit_images = []
+    lit_filenames = glob.glob(os.path.join(lit_dir,'*'))
+    subj_names = {fn: ' '.join(os.path.basename(fn).split()[:-2]) for fn in lit_filenames}
+    dists = [(fn, levenshtein_d(subject.name, subj_names[fn])) for fn in subj_names]
+    try:
+        best = min(dists, key=itemgetter(1))
+        if best[1]/len(subject.name) > 0.3:
+            print(f'Подозрительный файл литературы: {best[0]}')
+        lit_images = glob.glob(os.path.join(lit_dir, subj_names[best[0]]+'*'))
+    except:
+        pass
+    return [InlineImage(template, fn, width=Mm(173)) for fn in sorted(lit_images)]
+
 
 def main() -> None:
     """ Точка входа """
-    check_args()
-    plan = core.get_plan(sys.argv[1])
-    course = get_course(sys.argv[2])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('plan', type=str, help='PLX-файл РУПа')
+    parser.add_argument('course', type=str, help='YAML-файл-курса')
+    parser.add_argument('lit_dir', type=str, help='Папка со сканами литературы')
+    args = parser.parse_args()
+    plan = core.get_plan(args.plan)
+    course = get_course(args.course)
     subject = get_subject(plan, course)
     links_before, links_after = plan.find_dependencies(subject, course)
     template = core.get_template('rpd.docx')
+    lit_images = get_lit_images(template, subject, args.lit_dir)
     context = {
         'course': course,
         'plan': plan,
         'subject': subject,
         'links_before': links_before,
         'links_after': links_after,
+        'lit_images': lit_images
     }
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
