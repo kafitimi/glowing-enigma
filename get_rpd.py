@@ -14,6 +14,8 @@ from docxtpl import DocxTemplate, InlineImage
 
 import core
 
+IMAGE_KINDS = ('lit', 'title')
+
 
 def fill_table_column(table: Table, row: int, columns: List[int], values: List[Any]) -> None:
     """ Заполнить колонку таблицу """
@@ -273,22 +275,31 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     else:
         core.remove_table(template, exam_table)
 
-def get_lit_images(template: DocxTemplate, subject: core.Subject, lit_dir: str) -> list:
-    """ Поиск картинок литературы для дисциплины"""
-    lit_images = []
-    try:
-        lit_filenames = glob.glob(os.path.join(lit_dir, '*'))
-        subj_names = {fn: ' '.join(os.path.basename(fn).split()[:-2]) for fn in lit_filenames}
-        dists = [(fn, levenshtein_d(subject.name, subj_names[fn])) for fn in subj_names]
-        best = min(dists, key=itemgetter(1))
-        lit_images = glob.glob(os.path.join(lit_dir, subj_names[best[0]]+'*'))
-        if best[1]/len(subject.name) > 0.3:
-            print(f'Подозрительный файл литературы: {best[0]}')
-        else:
-            print('Файлы сканов литературы: ' + ' '.join(lit_images))
-    except:
-        pass
-    return [InlineImage(template, fn, width=Mm(173)) for fn in sorted(lit_images)]
+def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, InlineImage]:
+    """ 
+    Поиск картинок, типы которых перечислены в IMAGE_KINDS, например, 
+    литературы или титульных листов. Папки для поиска указывается в args
+    """
+    images = {}
+    for kind in IMAGE_KINDS:
+        try:
+            images[kind] = []
+            path = vars(args).get(kind + '_dir')
+            if path is None: continue
+            fns = glob.glob(os.path.join(path, '*'))
+            pic_subj = {fn: os.path.splitext(os.path.basename(fn))[0] for fn in fns}
+            distances = [(fn, levenshtein_d(subject.name, pic_subj[fn])) for fn in pic_subj]
+            best = min(distances, key=itemgetter(1))
+            images[kind] += glob.glob(os.path.join(path, pic_subj[best[0]]+'*'))
+            if best[1]/len(subject.name) > 0.3:
+                print(f'Подозрительный скан ({kind}): {best[0]}')
+            else:
+                print(f'Найдены файл(ы) сканов ({kind}): ' + ' '.join(images[kind]))
+            images[kind] = [InlineImage(template, fn, width=Mm(173)) for fn in sorted(images[kind])]
+        except:
+            print(f'Файл(ы) сканов ({kind}) не найдены!')
+            images[kind] = []
+    return images
 
 
 def main() -> None:
@@ -299,26 +310,31 @@ def main() -> None:
     parser.add_argument('-t', '--title_dir', type=str, help='Папка со сканами титульных листов')
     parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
     args = parser.parse_args()
+
     plan = core.get_plan(args.plan)
     course = get_course(args.course)
     subject = get_subject(plan, course)
     links_before, links_after = plan.find_dependencies(subject, course)
     template = core.get_template('rpd.docx')
-    lit_images = get_lit_images(template, subject, args.lit_dir)
+    images = get_images(template, subject, args)
+    
     context = {
         'course': course,
         'plan': plan,
         'subject': subject,
         'links_before': links_before,
         'links_after': links_after,
-        'lit_images': lit_images
-    }
+    }    
+    for kind in IMAGE_KINDS:
+        context[kind + '_images'] = images[kind]
+
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
     fill_table_4(template, context)
     fill_table_6_1(template, context)
     fill_table_7(template, context)
     remove_extra_table_5(template, context)
+
     template.render(context)
     template.save(sys.argv[2].replace('.yaml', '.docx'))
     print('Done')
