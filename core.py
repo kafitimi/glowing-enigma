@@ -424,7 +424,11 @@ class EducationPlan:
         """ Прочитать связи дисциплин с компетенциями """
         path = './{{{mmisdb}}}{0}'.format('ПланыКомпетенцииДисциплины', **NAMESPACES)
         for sub_elem in elem.findall(path):
-            competence = self.competence_keys[sub_elem.get('КодКомпетенции')]
+            comp_code = sub_elem.get('КодКомпетенции')
+            try:
+                competence = self.competence_keys[comp_code]
+            except KeyError:
+                competence = [comp for k, comp in self.competence_keys.items() if comp_code in comp.indicator_keys][0]
             subject = self.subject_keys[sub_elem.get('КодСтроки')]
             competence.subjects.add(subject.code)
             subject.competencies.add(competence.code)
