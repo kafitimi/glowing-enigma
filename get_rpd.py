@@ -291,10 +291,13 @@ def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Nam
             distances = [(fn, levenshtein_d(subject.name, pic_subj[fn])) for fn in pic_subj]
             best = min(distances, key=itemgetter(1))
             images[kind] += glob.glob(os.path.join(path, pic_subj[best[0]]+'*'))
-            if best[1]/len(subject.name) > 0.3:
+            if best[1]/len(subject.name) < 0.4:
+                print(f'Найдены файл(ы) сканов ({kind}): ' + ' '.join(images[kind]))
+            elif best[1]/len(subject.name) <= 0.7: 
                 print(f'Подозрительный скан ({kind}): {best[0]}')
             else:
-                print(f'Найдены файл(ы) сканов ({kind}): ' + ' '.join(images[kind]))
+                print(f'Подходящих сканов не найдено, наименее далекий по имени файл ({kind}): {best[0]}')
+                images[kind] = []
             images[kind] = [InlineImage(template, fn, width=Mm(173)) for fn in sorted(images[kind])]
         except:
             print(f'Файл(ы) сканов ({kind}) не найдены!')
@@ -302,14 +305,16 @@ def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Nam
     return images
 
 
-def main() -> None:
+def main(args=None) -> None:
     """ Точка входа """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('plan', type=str, help='PLX-файл РУПа')
-    parser.add_argument('course', type=str, help='YAML-файл курса')
-    parser.add_argument('-t', '--title_dir', type=str, help='Папка со сканами титульных листов')
-    parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
-    args = parser.parse_args()
+    if args is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('plan', type=str, help='PLX-файл РУПа')
+        parser.add_argument('course', type=str, help='YAML-файл курса')
+        parser.add_argument('-t', '--title_dir', type=str, help='Папка со сканами титульных листов')
+        parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
+        parser.add_argument('-o', '--output_file', type=str, help='Название выходного файла docx')
+        args = parser.parse_args()
 
     plan = core.get_plan(args.plan)
     course = get_course(args.course)
@@ -336,8 +341,17 @@ def main() -> None:
     remove_extra_table_5(template, context)
 
     template.render(context)
-    template.save(sys.argv[2].replace('.yaml', '.docx'))
-    print('Done')
+    output_file = args.course.replace('.yaml', '.docx') 
+    if args.output_file:
+        output_file = args.output_file
+        if not output_file.endswith('.docx'):
+            outputfile += '.docx'
+    try:
+        template.save(output_file)
+        print(f'Файл {output_file} успешно сохранен')
+    except:
+        print(f'Ошибка при сохранении файла {output_file}!')
+    
 
 
 if __name__ == '__main__':

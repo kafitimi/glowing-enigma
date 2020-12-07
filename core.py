@@ -50,7 +50,8 @@ JUSTIFY = 'Table Contents'
 def get_plan(plan_filename: str) -> 'EducationPlan':
     """ Читаем учебный план """
     try:
-        plan = EducationPlan(plan_filename)
+        # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
+        plan = plan_filename if type(plan_filename)==EducationPlan else EducationPlan(plan_filename) 
     except OSError:
         print('Не могу открыть учебный план %s' % plan_filename)
         sys.exit()
