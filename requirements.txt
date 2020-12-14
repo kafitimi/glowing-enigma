@@ -5,3 +5,4 @@ pandas
 python-docx
 pyyaml
 requests
+python-Levenshtein

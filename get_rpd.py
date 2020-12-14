@@ -2,11 +2,19 @@
 import functools
 import sys
 from typing import List, Dict, Any
+import argparse
+import glob
+import os
+from operator import itemgetter
 
+from Levenshtein import distance as levenshtein_d
 from docx.table import Table
-from docxtpl import DocxTemplate
+from docx.shared import Mm
+from docxtpl import DocxTemplate, InlineImage
 
 import core
+
+IMAGE_KINDS = ('lit', 'title')
 
 
 def fill_table_column(table: Table, row: int, columns: List[int], values: List[Any]) -> None:
@@ -152,7 +160,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
     # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y, control)
+    control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
     if core.CT_EXAM in control:
         levels = [
             ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
@@ -238,6 +246,9 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу со ссылками на литературу в разделе 7 """
+    if context['lit_images']:
+        return  # вместо таблицы будет скан страницы с печатью
+
     def append_table_7_section(caption, books):
         rows_count = len(table.rows)
         core.add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
@@ -261,38 +272,91 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     exam_table, credit_table = 6, 7
     subject = context['subject']
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y, control)
+    control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
     if core.CT_EXAM in control:
         core.remove_table(template, credit_table)
     else:
         core.remove_table(template, exam_table)
 
 
-def main() -> None:
+def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, List[InlineImage]]:
+    """ 
+    Поиск картинок, типы которых перечислены в IMAGE_KINDS, например, 
+    литературы или титульных листов. Папки для поиска указывается в args
+    """
+    images = {}
+    for kind in IMAGE_KINDS:
+        try:
+            images[kind] = []
+            path = vars(args).get(kind + '_dir')
+            if path is None:
+                continue
+            fns = glob.glob(os.path.join(path, '*'))
+            pic_subj = {fn: os.path.splitext(os.path.basename(fn))[0] for fn in fns}
+            distances = [(fn, levenshtein_d(subject.name, pic_subj[fn])) for fn in pic_subj]
+            best = min(distances, key=itemgetter(1))
+            images[kind] += glob.glob(os.path.join(path, pic_subj[best[0]]+'*'))
+            if best[1]/len(subject.name) < 0.4:
+                print(f'Найдены файл(ы) сканов ({kind}): ' + ' '.join(images[kind]))
+            elif best[1]/len(subject.name) <= 0.7: 
+                print(f'Подозрительный скан ({kind}): {best[0]}')
+            else:
+                print(f'Подходящих сканов не найдено, наименее далекий по имени файл ({kind}): {best[0]}')
+                images[kind] = []
+            images[kind] = [InlineImage(template, fn, width=Mm(173)) for fn in sorted(images[kind])]
+        except OSError:
+            print(f'Файл(ы) сканов ({kind}) не найдены!')
+            images[kind] = []
+    return images
+
+
+def main(args=None) -> None:
     """ Точка входа """
-    check_args()
-    plan = core.get_plan(sys.argv[1])
-    course = get_course(sys.argv[2])
+    if args is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('plan', type=str, help='PLX-файл РУПа')
+        parser.add_argument('course', type=str, help='YAML-файл курса')
+        parser.add_argument('-t', '--title_dir', type=str, help='Папка со сканами титульных листов')
+        parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
+        parser.add_argument('-o', '--output_file', type=str, help='Название выходного файла docx')
+        args = parser.parse_args()
+
+    plan = core.get_plan(args.plan)
+    course = get_course(args.course)
     subject = get_subject(plan, course)
     links_before, links_after = plan.find_dependencies(subject, course)
     template = core.get_template('rpd.docx')
+    images = get_images(template, subject, args)
+    
     context = {
         'course': course,
         'plan': plan,
         'subject': subject,
         'links_before': links_before,
         'links_after': links_after,
-    }
+    }    
+    for kind in IMAGE_KINDS:
+        context[kind + '_images'] = images[kind]
+
     fill_table_1_2(template, context)
     fill_table_3_1(template, context)
     fill_table_4(template, context)
     fill_table_6_1(template, context)
     fill_table_7(template, context)
     remove_extra_table_5(template, context)
-    template.render(context)
-    template.save(sys.argv[2].replace('.yaml', '.docx'))
-    print('Done')
 
+    template.render(context)
+    output_file = args.course.replace('.yaml', '.docx') 
+    if args.output_file:
+        output_file = args.output_file
+        if not output_file.endswith('.docx'):
+            output_file += '.docx'
+    try:
+        template.save(output_file)
+        print(f'Файл {output_file} успешно сохранен')
+    except OSError:
+        print(f'Ошибка при сохранении файла {output_file}!')
+    
 
 if __name__ == '__main__':
     main()
