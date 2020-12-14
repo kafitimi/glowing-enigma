@@ -5,9 +5,9 @@ from typing import List, Dict, Any
 import argparse
 import glob
 import os
-from Levenshtein import distance as levenshtein_d
 from operator import itemgetter
 
+from Levenshtein import distance as levenshtein_d
 from docx.table import Table
 from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
@@ -160,7 +160,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
 
     # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y if type(x)==list else set.union(x,y), control)
+    control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
     if core.CT_EXAM in control:
         levels = [
             ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
@@ -248,6 +248,7 @@ def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу со ссылками на литературу в разделе 7 """
     if context['lit_images']:
         return  # вместо таблицы будет скан страницы с печатью
+
     def append_table_7_section(caption, books):
         rows_count = len(table.rows)
         core.add_table_rows(table, len(books) + 1)  # доп. строка для заголовка
@@ -259,23 +260,26 @@ def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
             core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book['гриф'])
             core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
             core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
+
     table = template.get_docx().tables[9]
     append_table_7_section('Основная литература', context['course'].primary_books)
     append_table_7_section('Дополнительная литература', context['course'].secondary_books)
     core.fix_table_borders(table)
+
 
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     """ Удаляем лишнюю таблицу из раздела 5 """
     exam_table, credit_table = 6, 7
     subject = context['subject']
     control = [s.control for s in subject.semesters.values()]
-    control = functools.reduce(lambda x, y: x + y if type(x)==list else set.union(x,y), control)
+    control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
     if core.CT_EXAM in control:
         core.remove_table(template, credit_table)
     else:
         core.remove_table(template, exam_table)
 
-def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, InlineImage]:
+
+def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, List[InlineImage]]:
     """ 
     Поиск картинок, типы которых перечислены в IMAGE_KINDS, например, 
     литературы или титульных листов. Папки для поиска указывается в args
@@ -285,7 +289,8 @@ def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Nam
         try:
             images[kind] = []
             path = vars(args).get(kind + '_dir')
-            if path is None: continue
+            if path is None:
+                continue
             fns = glob.glob(os.path.join(path, '*'))
             pic_subj = {fn: os.path.splitext(os.path.basename(fn))[0] for fn in fns}
             distances = [(fn, levenshtein_d(subject.name, pic_subj[fn])) for fn in pic_subj]
@@ -299,7 +304,7 @@ def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Nam
                 print(f'Подходящих сканов не найдено, наименее далекий по имени файл ({kind}): {best[0]}')
                 images[kind] = []
             images[kind] = [InlineImage(template, fn, width=Mm(173)) for fn in sorted(images[kind])]
-        except:
+        except OSError:
             print(f'Файл(ы) сканов ({kind}) не найдены!')
             images[kind] = []
     return images
@@ -345,14 +350,13 @@ def main(args=None) -> None:
     if args.output_file:
         output_file = args.output_file
         if not output_file.endswith('.docx'):
-            outputfile += '.docx'
+            output_file += '.docx'
     try:
         template.save(output_file)
         print(f'Файл {output_file} успешно сохранен')
-    except:
+    except OSError:
         print(f'Ошибка при сохранении файла {output_file}!')
     
-
 
 if __name__ == '__main__':
     main()

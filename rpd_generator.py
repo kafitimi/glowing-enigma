@@ -1,8 +1,10 @@
+import argparse
+import unicodedata
+
 import yaml
 import pandas as pd
-import unicodedata
-from get_rpd import *
-import core
+
+from get_rpd import main
 
 filename = 'courses/tpl.yaml'
 with open(filename, encoding='UTF-8') as input_file:
@@ -11,7 +13,7 @@ with open(filename, encoding='UTF-8') as input_file:
     except AttributeError:
         data = yaml.load(input_file, Loader=yaml.Loader)
 for name in data['названия']:
-    for i,word in enumerate(name):
+    for i, word in enumerate(name):
         name[i] = unicodedata.normalize('NFC', word)
 
 XLS_FILE = 'inputs/G09040101_20-12ИВТ.plx.xls'
@@ -21,8 +23,10 @@ df.columns = df.iloc[1].values
 df = df[~df['Наименование'].isna() & ~df['Компетенции'].isna()][['Индекс', 'Наименование']]
 
 for i, row in df.iterrows():
-    if i < 10: continue
-    if i > 41: break
+    if i < 10:
+        continue
+    if i > 41:
+        break
     name = unicodedata.normalize('NFC', row['Наименование'])
     data['названия'] = [name.lower().split()]
     fn = f'courses/{row["Индекс"]} {name}.yaml'
@@ -37,8 +41,6 @@ for i, row in df.iterrows():
     parser.add_argument('-l', '--lit_dir', type=str, help='Папка со сканами литературы')
     parser.add_argument('-o', '--output_file', type=str, help='Название выходного файла docx')
     
-    args = parser.parse_args(['inputs/G09040101_20-12ИВТ.plx', fn, 
-                              '-l', 'liter2', '-t', 'titles/cuts'])
-    args.plan = core.get_plan(args.plan)
+    args = parser.parse_args(['inputs/G09040101_20-12ИВТ.plx', fn, '-l', 'liter2', '-t', 'titles/cuts'])
 
     main(args)

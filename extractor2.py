@@ -1,22 +1,18 @@
 """ Генерация ФОС """
 import os
 import sys
+import difflib
 from typing import Dict, List
 
-
+import pandas as pd
+import numpy as np
 from docx import Document
 from docx.document import Document as DocumentType
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH 
 from docx.oxml import CT_P, CT_Tbl
-from docx.shared import Cm
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
-
-import difflib
-import pandas as pd
-import numpy as np
 
 import core
 
@@ -114,8 +110,8 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
 
 
 def table2list(x):
-    ''' Читает таблицу из РПД в список'''
-    ls =[]
+    """ Читает таблицу из РПД в список """
+    ls = []
     try:
         for row in x.rows:
             for cell in row.cells:
@@ -127,46 +123,60 @@ def table2list(x):
     except IndexError:
         return [[' '], 1, 1]
 
-cases={'отл':'Отлично', 'хор':'Хорошо', 'неудов':'неУдов', 
-       'удовл':'Удовл','не зач':'не Зачтено', 
-       'незач':'не Зачтено', 'зач':'Зачтено'}
-testtypes = {'the':'Перевод, лексико-грамматический анализ, объем словарного запаса и аннотирование научной статьи',
-       'экзамен':'Экзаменационные билеты','зачет':'Задания к зачету'}
+
+cases = {
+    'отл': 'Отлично',
+    'хор': 'Хорошо',
+    'неудов': 'неУдов',
+    'удовл': 'Удовл',
+    'не зач': 'не Зачтено',
+    'незач': 'не Зачтено',
+    'зач': 'Зачтено'
+}
+
+testtypes = {
+    'the': 'Перевод, лексико-грамматический анализ, объем словарного запаса и аннотирование научной статьи',
+    'экзамен': 'Экзаменационные билеты',
+    'зачет': 'Задания к зачету'
+}
        
 
 def normalize(alist):
     thelist = []
     for item in alist:
-         item = item.lower()  
-         for key, value in cases.items():
-              if key in item: item = value
-         if not item in cases.values(): 
-              item = ' '
-         thelist.append(item)
+        item = item.lower()
+        for key, value in cases.items():
+            if key in item:
+                item = value
+        if item not in cases.values():
+            item = ' '
+        thelist.append(item)
     return thelist
 
+
 def findout_fos_part(documento):
-    ''' Выдергивает все абзацы между литературой и "Примерные контрольные задания" '''
+    """ Выдергивает все абзацы между литературой и "Примерные контрольные задания" """
     text_at_start = ['Примерные контрольные задания (вопросы']
     text_at_end = ['учебной литературы', 'iprbook', 'lanbook', 'НБ СВФУ',
                    'информационно-телекоммуникационной сети']
     flag, result_text = False, ''
     for paragraph in documento.paragraphs:
         if any(key_word in paragraph.text for key_word in text_at_end):
-          flag = False
+            flag = False
         if flag:
-          result_text += (paragraph.text+'\n')
+            result_text += (paragraph.text+'\n')
         if text_at_start[0] in paragraph.text:
-          flag = True
-    result_text = result_text.replace('\n\n','\n').replace('  ',' ',1000)    
+            flag = True
+    result_text = result_text.replace('\n\n', '\n').replace('  ', ' ', 1000)
     return result_text
 
-def find_rpd(subjectcode,subjectname,control,controls,sem):
+
+def find_rpd(subjectcode, subjectname, control, controls, sem):
     global fileslist
-    filename = difflib.get_close_matches(subjectcode + ' ' + subjectname,fileslist)
-    if len(filename)<1:
-        return [' ',' ',' ',' ',' ',' ']
-    filename = './rpds/'+filename[0]+'.docx'
+    filename = difflib.get_close_matches(subjectcode + ' ' + subjectname, fileslist)
+    if len(filename) < 1:
+        return [' ', ' ', ' ', ' ', ' ', ' ']
+    filename = './rpds/' + str(filename[0]) + '.docx'
     rpd_doc = Document(filename)
     marks = []
     crirs = []
@@ -176,60 +186,59 @@ def find_rpd(subjectcode,subjectname,control,controls,sem):
         tablen = table2list(table)
         row, column = tablen[1], tablen[2]
         tablen = tablen[0]
-        if len(tablen)<column: 
-             continue
+        if len(tablen) < column:
+            continue
         else: 
-             row = len(tablen) // column
-             tablen = tablen[:(row*column)]
-        df = pd.DataFrame(np.array(tablen).reshape(row,column))  #reshape to the table shape
+            row = len(tablen) // column
+            tablen = tablen[:(row*column)]
+        df = pd.DataFrame(np.array(tablen).reshape(row, column))  # reshape to the table shape
 
-
-        if sum([key_word in df.iloc[0,column-1] for key_word in ['Шкал','Оценк']])>0:
-               marks += list(df[df.columns[-1]])
-               crirs += list(df[df.columns[-2]])
+        if sum([key_word in df.iloc[0, column-1] for key_word in ['Шкал', 'Оценк']]) > 0:
+            marks += list(df[df.columns[-1]])
+            crirs += list(df[df.columns[-2]])
         try:
-              if zuv_not_found:
-                  for irow in range(3,0,-1):
-                      for icol in range(1,3):
-                            if '(ЗУВ)' in df.iloc[irow,icol]: 
-                                zuv += df.iloc[irow+1,icol]
-                                zuv_not_found = False
+            if zuv_not_found:
+                for irow in range(3, 0, -1):
+                    for icol in range(1, 3):
+                        if '(ЗУВ)' in df.iloc[irow, icol]:
+                            zuv += df.iloc[irow + 1, icol]
+                            zuv_not_found = False
 
-              if zuv_not_found2 and zuv_not_found:                   
-                  for irow in range(3,0,-1):
-                      for icol in range(1,3):
-                             if '.1.2.' in df.iloc[irow,icol]: 
-                                zuv += df.iloc[irow+1,icol]
-                                zuv_not_found2 = False
+            if zuv_not_found2 and zuv_not_found:
+                for irow in range(3, 0, -1):
+                    for icol in range(1, 3):
+                        if '.1.2.' in df.iloc[irow, icol]:
+                            zuv += df.iloc[irow+1, icol]
+                            zuv_not_found2 = False
         except IndexError: 
-              cndekc = 7 
+            cndekc = 7
 
     marks = normalize(marks)
-    crirs = [x for ind,x in enumerate(crirs) if marks[ind]!=' ']
-    marks = [x for x in marks if x!=' ']
+    crirs = [x for ind, x in enumerate(crirs) if marks[ind] != ' ']
+    marks = [x for x in marks if x != ' ']
     excellent, good, fair, bad, tests = ' ', ' ', ' ', ' ', ' ' 
-    if control=='Зачет':
-       for ind, criteria in enumerate(crirs):
-           if marks[ind] == 'Зачтено': excellent += crirs[ind]
-           if marks[ind] == 'не Зачтено': bad += crirs[ind]
+    if control == 'Зачет':
+        for ind, criteria in enumerate(crirs):
+            if marks[ind] == 'Зачтено': excellent += crirs[ind]
+            if marks[ind] == 'не Зачтено': bad += crirs[ind]
     else:
-       for ind, criteria in enumerate(crirs):
-           if marks[ind] == 'Отлично': excellent += crirs[ind]
-           if marks[ind] == 'Хорошо': good += crirs[ind]
-           if marks[ind] == 'Удовл': fair += crirs[ind]
-           if marks[ind] == 'не Удов': bad += crirs[ind]
+        for ind, criteria in enumerate(crirs):
+            if marks[ind] == 'Отлично': excellent += crirs[ind]
+            if marks[ind] == 'Хорошо': good += crirs[ind]
+            if marks[ind] == 'Удовл': fair += crirs[ind]
+            if marks[ind] == 'не Удов': bad += crirs[ind]
     
-    if bad ==' ': bad = excellent
+    if bad == ' ': bad = excellent
     document = Document(filename)
     bigtext = findout_fos_part(document) 
     bigtext = (control + bigtext).lower()
     testtype = ' '
     for key, value in testtypes.items():
-              if key in bigtext: 
-                   testtype = value
-                   continue
+        if key in bigtext:
+            testtype = value
+            continue
 
-    return [zuv.replace('\n\n','\n'),excellent,good,fair,bad,testtype]
+    return [zuv.replace('\n\n', '\n'), excellent, good, fair, bad, testtype]
  
 
 def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -253,7 +262,7 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
         row_number += 1
         core.set_cell_text(table, row, 0, core.CENTER, str(row_number))
         core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
-        for runover in range(2,8):
+        for runover in range(2, 8):
             core.set_cell_text(table, row, runover, core.JUSTIFY, ' ')
         # table.cell(row, 1).merge(table.cell(row, len(table.columns) - 1))
         subjects = [plan.subject_codes[s] for s in competence.subjects]
@@ -270,9 +279,9 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
             for control in controls: 
                 core.add_table_rows(table, 1)
                 row = len(table.rows) - 1             
-                zuv_criteria = find_rpd(subject.code,subject.name,control,controls,sem)
-                sem +=1
-                if len(zuv_criteria)==6:
+                zuv_criteria = find_rpd(subject.code, subject.name, control, controls, sem)
+                sem += 1
+                if len(zuv_criteria) == 6:
                     core.set_cell_text(table, row, 0, core.CENTER, ' ')
                     core.set_cell_text(table, row, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
                     core.set_cell_text(table, row, 2, core.JUSTIFY, zuv_criteria[0])
@@ -289,8 +298,8 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
                         core.set_cell_text(table, row, 6, core.JUSTIFY, zuv_criteria[4])
                     core.set_cell_text(table, row, 7, core.JUSTIFY, zuv_criteria[5])
            
-            
     core.fix_table_borders(table)
+
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблицы в разделе 2.1 """
@@ -303,110 +312,115 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.name)
     core.fix_table_borders(table)
 
-header = ['Министерство науки и высшего образования Российской Федерации',
-        'Федеральное государственное автономное образовательное учреждение',
-        'высшего образования',
-        '«СЕВЕРО-ВОСТОЧНЫЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ ИМЕНИ М.К. АММОСОВА»',
-        'Институт математики и информатики', 
-        '\n\n\n\n\n\n\n\n\n\n\n\nФонд оценочных средств дисциплины']
 
-middle = ['\nкод дисциплины и название дисциплины', #bold
-        '\nдля программы ',
-        'по направлению подготовки',
-        'УГС Название направления подготовки — ',
-        'Направленность программы: ',
-        '\n\nФорма контроля:', #bold
-        'экзамен/зачет/зачет со оценкой/курсовая работа', #bold
-        '\n\n']
-middleBold = [True,False,False,False,False,True,True,False]
+header = [
+    'Министерство науки и высшего образования Российской Федерации',
+    'Федеральное государственное автономное образовательное учреждение',
+    'высшего образования',
+    '«СЕВЕРО-ВОСТОЧНЫЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ ИМЕНИ М.К. АММОСОВА»',
+    'Институт математики и информатики',
+    '\n\n\n\n\n\n\n\n\n\n\n\nФонд оценочных средств дисциплины'
+]
+
+middle = [
+    '\nкод дисциплины и название дисциплины',  # bold
+    '\nдля программы ',
+    'по направлению подготовки',
+    'УГС Название направления подготовки — ',
+    'Направленность программы: ',
+    '\n\nФорма контроля:',  # bold
+    'экзамен/зачет/зачет со оценкой/курсовая работа',  # bold
+    '\n\n'
+]
+
+middleBold = [True, False, False, False, False, True, True, False]
 
 footer = ['\n\n\n\n\n\n\n\n\n\n\n\n\nЯкутск 2019']
 
-metodmater = ['6.3. Методические материалы, определяющие процедуры оценивания',
-'Текущий контроль успеваемости с БРС состоит из:',
-'– контрольные срезы, устанавливаемые учебными подразделениями;',
-'– рубежный срез, проводимый после окончания зачетной недели, за день до начала',
-'экзаменационной сессии, который определяет общую сумму баллов, набранную обучающимся в течение всего семестра по данной дисциплине.',
-'Промежуточная аттестация осуществляется в конце семестра после завершения учебных занятий в форме: зачетов, зачетов с оценкой, оценки отчета по практике, экзаменов.',
-'Оценка знаний, умений и навыков производится согласно положению о балльно-рейтинговой системе в СВФУ.']
+method_mater = [
+    '6.3. Методические материалы, определяющие процедуры оценивания',
+    'Текущий контроль успеваемости с БРС состоит из:',
+    '– контрольные срезы, устанавливаемые учебными подразделениями;',
+    '– рубежный срез, проводимый после окончания зачетной недели, за день до начала',
+    'экзаменационной сессии, который определяет общую сумму баллов, набранную '
+    'обучающимся в течение всего семестра по данной дисциплине.',
+    'Промежуточная аттестация осуществляется в конце семестра после завершения учебных '
+    'занятий в форме: зачетов, зачетов с оценкой, оценки отчета по практике, экзаменов.',
+    'Оценка знаний, умений и навыков производится согласно положению о балльно-рейтинговой системе в СВФУ.'
+]
 
+table61 = [
+    'Коды', 'оцениваемых', 'Индикаторы', 'достижения',
+    'Показатель', 'оценивания', '(по', 'п.1.2.РПД)', 'Шкалы оценивания',
+    'сформированности'
+]
 
+table62 = [
+    'Оцениваемый', 'показатель', '(ЗУВ)', 'Тема', '(темы)',
+    'Образец', 'типового', 'тестового', 'задания', '(вопроса)'
+]
 
-table61 = ['Коды','оцениваемых','Индикаторы','достижения',
- 'Показатель','оценивания','(по','п.1.2.РПД)','Шкалы оценивания',
- 'сформированности']
-table62 = ['Оцениваемый','показатель','(ЗУВ)','Тема','(темы)',
-           'Образец','типового','тестового','задания','(вопроса)']
-tableBooks = ['Автор','название','издания','издательство','литературы',
-              'информационных ресурсов','гриф','НБ СВФУ','библиотека',
-              'экземпляров','Электронные','ЭБС','ЭБ СВФУ'] 
+tableBooks = [
+    'Автор', 'название', 'издания', 'издательство', 'литературы',
+    'информационных ресурсов', 'гриф', 'НБ СВФУ', 'библиотека',
+    'экземпляров', 'Электронные', 'ЭБС', 'ЭБ СВФУ'
+]
+
 
 def preceding_paragraph(fos_doc, x):
-    ''' Определяет тип таблицы и добавляет название параграфа '''
+    """ Определяет тип таблицы и добавляет название параграфа """
     global table_flazhok 
-    if sum([word in x for word in table61])>5:
-        fos_doc.add_paragraph('6. Фонд оценочных средств для проведения промежуточной аттестации обучающихся по дисциплине').bold = True
+    if sum([word in x for word in table61]) > 5:
+        title6 = '6. Фонд оценочных средств для проведения промежуточной аттестации обучающихся по дисциплине'
+        fos_doc.add_paragraph(title6).bold = True
         fos_doc.paragraphs[-1].runs[0].bold = True 
         fos_doc.add_paragraph('6.1. Показатели, критерии и шкала оценивания').bold = True
         fos_doc.paragraphs[-1].runs[0].bold = True 
         table_flazhok = True
         return True
-    if sum([word in x for word in table62])>5:
+    if sum([word in x for word in table62]) > 5:
         fos_doc.add_paragraph('6.2. Примерные контрольные задания (вопросы) для промежуточной аттестации').bold = True
         fos_doc.paragraphs[-1].runs[0].bold = True 
         table_flazhok = True
         return True
-    if sum([word in x for word in tableBooks])>5:
+    if sum([word in x for word in tableBooks]) > 5:
         table_flazhok = False
     return table_flazhok
 
+
 def findout_fos(documento):
-    ''' Выдергивает все абзацы между литературой и "Примерные контрольные задания" '''
+    """ Выдергивает все абзацы между литературой и "Примерные контрольные задания" """
     text_at_start = ['Примерные контрольные задания (вопросы']
-    text_at_end = ['учебной литературы', 'iprbook', 'lanbook', 'НБ СВФУ',
-                   'информационно-телекоммуникационной сети']
+    text_at_end = ['учебной литературы', 'iprbook', 'lanbook', 'НБ СВФУ', 'информационно-телекоммуникационной сети']
     flag, result_text = False, ''
     for paragraph in documento.paragraphs:
         if any(key_word in paragraph.text for key_word in text_at_end):
-          flag = False
+            flag = False
         if flag:
-          result_text += (paragraph.text+'\n')
+            result_text += (paragraph.text + '\n')
         if text_at_start[0] in paragraph.text:
-          flag = True
-    result_text = result_text.replace('\n\n','\n').replace('  ',' ',1000)    
+            flag = True
+    result_text = result_text.replace('\n\n', '\n').replace('  ', ' ', 1000)
     return result_text
 
-def table2list(x):
-    ''' Читает таблицу из РПД в список'''
-    ls =[]
-    try:
-        for row in x.rows:
-            for cell in row.cells:
-                celltext = ''
-                for paragraph in cell.paragraphs:
-                    celltext += '\n' + paragraph.text
-                ls.append(celltext)
-        return [ls, len(x.rows), len(x.columns)]
-    except IndexError:
-        return [[' '], 1, 1]
 
 def list2docx(fos_doc, ls, row, column):
-    ''' Из списка восстанавливает таблицу, объединяя ячейки со совпадающими текстами'''
-    if len(ls)!=row*column:
+    """ Из списка восстанавливает таблицу, объединяя ячейки со совпадающими текстами """
+    if len(ls) != row * column:
         return 
 
-    df = pd.DataFrame(np.array(ls).reshape(row,column))  #reshape to the table shape
-    word_table = fos_doc.add_table(rows = row, cols = column, style='Table Grid')
-    for ind_row in range(0,row,1):
-        for ind_col in range(0,column,1):
-            cell = word_table.cell(ind_row,ind_col)
-            if ind_row>0:
-                 cell2 = word_table.cell(ind_row-1,ind_col)
-                 if cell2.text == df.iloc[ind_row,ind_col]:
-                     cell.text = ''
-                     cell.merge(cell2)
-                 else:
-                     cell.text = df.iloc[ind_row,ind_col]
+    df = pd.DataFrame(np.array(ls).reshape(row, column))  # reshape to the table shape
+    word_table = fos_doc.add_table(rows=row, cols=column, style='Table Grid')
+    for ind_row in range(0, row, 1):
+        for ind_col in range(0, column, 1):
+            cell = word_table.cell(ind_row, ind_col)
+            if ind_row > 0:
+                cell2 = word_table.cell(ind_row-1, ind_col)
+                if cell2.text == df.iloc[ind_row, ind_col]:
+                    cell.text = ''
+                    cell.merge(cell2)
+                else:
+                    cell.text = df.iloc[ind_row, ind_col]
             else:
                 if ind_col > 0:
                     cell2 = word_table.cell(ind_row, ind_col-1)
@@ -414,9 +428,10 @@ def list2docx(fos_doc, ls, row, column):
                         cell.text = ''
                         cell.merge(cell2)
                     else:
-                        cell.text = df.iloc[ind_row,ind_col]
+                        cell.text = df.iloc[ind_row, ind_col]
     fos_doc.add_paragraph(' ')                                      
     return 
+
 
 def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     global table_flazhok
@@ -435,7 +450,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     #         marker = p1
     #         break
     global fileslist
-    fileslist = [filename[:-5] for filename in os.listdir('./rpds') if filename[-4:]=='docx']
+    fileslist = [filename[:-5] for filename in os.listdir('./rpds') if filename[-4:] == 'docx']
 
     plan: core.EducationPlan = context['plan']
     middle[1] += 'магистратуры' if plan.degree == core.MASTER else 'бакалавриата'
@@ -443,28 +458,28 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     middle[3] = plan.code + ' ' + plan.name
     subjects = sorted(plan.subject_codes.values(), key=core.Subject.repr)
     for s in subjects:
-        rpd = difflib.get_close_matches(s.code+' '+s.name,fileslist)
-        if len(rpd)<1:
+        rpd = difflib.get_close_matches(s.code + ' ' + s.name, fileslist)
+        if len(rpd) < 1:
             continue
-        rpd = './rpds/'+rpd[0]+'.docx'
+        rpd = './rpds/' + str(rpd[0]) + '.docx'
         rpd_doc = Document(rpd)
 
-        #''' титульная страница '''
+        # титульная страница
         document = template.get_docx()
         document.add_page_break() 
         document.add_paragraph('\n'.join(header))
-        document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        document.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         controls = []
         for number, semester in s.semesters.items():
             controls += [control_fancy_name[c] for c in semester.control]
         middle[0] = s.code + ' ' + s.name
         middle[6] = ' / '.join(controls)
-        for ind,line in enumerate(middle):
+        for ind, line in enumerate(middle):
             document.add_paragraph(line)
-            document.paragraphs[-1].runs[0].bold=middleBold[ind]
-            document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            document.paragraphs[-1].runs[0].bold = middleBold[ind]
+            document.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         document.add_paragraph('\n'.join(footer)) 
-        document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        document.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         document.add_page_break() 
 
         ''' флажок, чтобы забрать все таблицы между двумя группами ключевых слов '''
@@ -476,9 +491,8 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
         ''' таблицы все включены, теперь забираем все абзацы '''
         text_heap = findout_fos(rpd_doc)
         document.add_paragraph(text_heap) 
-        if not 'Методические материалы, определяющие' in text_heap:
-             document.add_paragraph('\n'.join(metodmater)) 
-
+        if 'Методические материалы, определяющие' not in text_heap:
+            document.add_paragraph('\n'.join(method_mater))
 
         # p2 = marker.insert_paragraph_before('%s %s' % (s.code, s.name))
         # p2.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER

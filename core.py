@@ -2,13 +2,13 @@
 import json
 import re
 import sys
+import traceback
+import unicodedata
 from copy import deepcopy
-from datetime import datetime
 from http import HTTPStatus
 from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
-import unicodedata
 
 import requests
 import yaml
@@ -50,11 +50,16 @@ JUSTIFY = 'Table Contents'
 def get_plan(plan_filename: str) -> 'EducationPlan':
     """ Читаем учебный план """
     try:
-        # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
-        plan = plan_filename if type(plan_filename)==EducationPlan else EducationPlan(plan_filename) 
+        if isinstance(plan_filename, EducationPlan):
+            raise ValueError()
+        plan = EducationPlan(plan_filename)
     except OSError:
         print('Не могу открыть учебный план %s' % plan_filename)
         sys.exit()
+    except ValueError:
+        # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
+        plan = plan_filename
+        traceback.print_stack()
     return plan
 
 
@@ -424,14 +429,19 @@ class EducationPlan:
         """ Прочитать связи дисциплин с компетенциями """
         path = './{{{mmisdb}}}{0}'.format('ПланыКомпетенцииДисциплины', **NAMESPACES)
         for sub_elem in elem.findall(path):
-            comp_code = sub_elem.get('КодКомпетенции')
-            try:
-                competence = self.competence_keys[comp_code]
-            except KeyError:
-                competence = [comp for k, comp in self.competence_keys.items() if comp_code in comp.indicator_keys][0]
             subject = self.subject_keys[sub_elem.get('КодСтроки')]
-            competence.subjects.add(subject.code)
-            subject.competencies.add(competence.code)
+            key = sub_elem.get('КодКомпетенции')
+            if key in self.competence_keys:
+                # Нашли компетенцию по коду
+                competence = self.competence_keys.get(key)
+                competence.subjects.add(subject.code)
+                subject.competencies.add(competence.code)
+            else:
+                for competence in self.competence_keys.values():
+                    if key in competence.indicator_keys:
+                        # Нашли индикатор -> берем его компетенцию
+                        competence.subjects.add(subject.code)
+                        subject.competencies.add(competence.code)
 
     def find_subject(self, course_names: List[Set[str]]) -> Subject:
         """ Ищем дисциплину в учебном плане """
@@ -470,7 +480,7 @@ class Course:
             except AttributeError:
                 data = yaml.load(input_file, Loader=yaml.Loader)
         for name in data['названия']:
-            for i,word in enumerate(name):
+            for i, word in enumerate(name):
                 name[i] = unicodedata.normalize('NFC', word)
         self.names: List[Set[str]] = [set(name) for name in data['названия']]
         self.authors: List[str] = data['авторы']
