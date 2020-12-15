@@ -6,7 +6,7 @@ import unicodedata
 from copy import deepcopy
 from http import HTTPStatus
 from os.path import join
-from typing import Dict, List, Set, Tuple, Union, Any
+from typing import Dict, List, Set, Tuple, Union, Any, NamedTuple
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -491,7 +491,7 @@ class Course:
         if 'цели' in data:
             self.goals: List[str] = data['цели']
         self.content: str = data['содержание']
-        self.knowledges: List[str] = data['знать']
+        self.knowledge: List[str] = data['знать']
         self.abilities: List[str] = data['уметь']
         self.skills: List[str] = data['владеть']
         self.links: List[Set[str]] = [set(name) for name in data['связи']]
@@ -532,3 +532,52 @@ class Course:
         if 'лань' in secondary_books:
             lanbook = secondary_books['лань']
             append_lanbook(self.secondary_books, lanbook['запрос'], lanbook['количество'])
+
+
+class ZUV(NamedTuple):
+    raw: str = ''
+    knowledge: List[str] = []
+    abilities: List[str] = []
+    skills: List[str] = []
+
+
+def get_zuv(content: str) -> ZUV:
+    rules1 = [
+        ('знать:', 'knowledge'), ('знает:', 'knowledge'), ('знать', 'knowledge'), ('знает', 'knowledge'),
+        ('уметь:', 'abilities'), ('умеет:', 'abilities'), ('уметь', 'abilities'), ('умеет', 'abilities'),
+        ('владеть:', 'skills'), ('владеет:', 'skills'), ('владеть', 'skills'), ('владеет', 'skills'),
+    ]
+    rules2 = [
+        ('методиками', 'методиками '), ('методиками:', 'методиками '),
+        ('навыками:', 'навыками '), ('навыками', 'навыками '),
+        ('практическими навыками', 'практическими навыками '), ('практическими навыками:', 'практическими навыками '),
+        ('опытом', 'опытом '), ('опытом:', 'опытом '),
+        ('практическим опытом', 'практическим опытом '), ('практическим опытом:', 'практическим опытом '),
+    ]
+    zuv = {'raw': content, 'knowledge': [], 'abilities': [], 'skills': []}
+    current, prefix = '', ''
+    for line in content.splitlines():
+        line = line.strip()
+        simple = line.lower()
+        for trigger, action in rules1:
+            if simple.startswith(trigger):
+                line = line[len(trigger):].strip()
+                current, prefix = action, ''
+                break
+        if current == 'skills':
+            simple = line.lower()
+            for trigger, action in rules2:
+                if simple.startswith(trigger):
+                    line = line[len(trigger):].strip()
+                    prefix = action
+                    break
+        if current and line:
+            zuv[current].append(prefix + line)
+    return ZUV(**zuv)
+
+
+class RPD(NamedTuple):
+    code: str = ''
+    name: str = ''
+    zuv: ZUV = ZUV()
+    competences: Dict[str, ZUV] = {}

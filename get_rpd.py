@@ -90,7 +90,7 @@ def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
                 core.set_cell_text(table, 1, 3, 'Table List', '•\t' + elem)
 
     table.cell(1, 3).merge(table.cell(row, 3))
-    add_study_results('knowledges', 'Знать:')
+    add_study_results('knowledge', 'Знать:')
     add_study_results('abilities', 'Уметь:')
     add_study_results('skills', 'Владеть:')
     core.fix_table_borders(table)
@@ -203,7 +203,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     # Знать, уметь, владеть
     start_row = 2
     table.cell(start_row, 2).merge(table.cell(start_row + rows_count - 1, 2))
-    add_study_results('knowledges', 'Знать:', 2, 2)
+    add_study_results('knowledge', 'Знать:', 2, 2)
     add_study_results('abilities', 'Уметь:', 2, 2)
     add_study_results('skills', 'Владеть:', 2, 2)
 
@@ -215,28 +215,28 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         table.cell(start_row, 4).merge(table.cell(start_row + len(subject.competencies) - 1, 4))
         if core.CT_CREDIT in control:
             if level == 'Освоено':
-                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
             else:
-                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый не знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
         else:
             if level == 'Высокий':
-                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
             elif level == 'Базовый':
-                add_study_results('knowledges', 'Обучаемый знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
             elif level == 'Минимальный':
-                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый не знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый владеет:', start_row, 4)
             else:
-                add_study_results('knowledges', 'Обучаемый не знает:', start_row, 4)
+                add_study_results('knowledge', 'Обучаемый не знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый не умеет:', start_row, 4)
                 add_study_results('skills', 'Обучаемый не владеет:', start_row, 4)
         table.cell(start_row, 5).merge(table.cell(start_row + len(subject.competencies) - 1, 5))
