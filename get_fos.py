@@ -87,18 +87,19 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         row_number += 1
         core.set_cell_text(table, row, 0, core.CENTER, str(row_number))
         core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
-        table.cell(row, 1).merge(table.cell(row, len(table.columns) - 1))
-        subjects = [plan.subject_codes[s] for s in competence.subjects]
-        for subject in sorted(subjects, key=core.Subject.repr):
-            core.add_table_rows(table, 1)
-            row = len(table.rows) - 1
-            row_number += 1
-            core.set_cell_text(table, row, 0, core.CENTER, str(row_number))
-            core.set_cell_text(table, row, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
-            for number, semester in subject.semesters.items():
-                controls = [control_fancy_name[c] for c in semester.control]
-                core.set_cell_text(table, row, number + 1, core.CENTER, ', '.join(controls))
-
+        for number in range(1, 9 if plan.degree == core.BACHELOR else 5):
+            cell_components = []
+            subjects = [plan.subject_codes[s] for s in competence.subjects]
+            for subject in subjects:
+                for sem_num, sem_work in subject.semesters.items():
+                    if sem_num == number:
+                        if sem_work.control:
+                            values = subject.code, subject.name, ', '.join(sem_work.control)
+                            cell_components.append('%s %s (%s)' % values)
+                        else:
+                            values = subject.code, subject.name
+                            cell_components.append('%s %s' % values)
+            core.set_cell_text(table, row, number + 1, core.CENTER, '\n'.join(cell_components))
     core.fix_table_borders(table)
 
 
