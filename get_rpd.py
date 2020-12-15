@@ -7,7 +7,7 @@ import glob
 import os
 from operator import itemgetter
 
-from Levenshtein import distance as levenshtein_d
+from Levenshtein import distance as levenshtein_d  # pylint: disable=no-name-in-module
 from docx.table import Table
 from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
@@ -156,6 +156,15 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
 
 def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     """ Заполняем таблицу в разделе 6.1 """
+
+    def add_study_results(attr: str, caption: str, row: int, col: int) -> None:
+        """ Добавить в ячейку таблицы результаты обучения """
+        results = course.__getattribute__(attr)
+        if results:
+            core.set_cell_text(table, row, col, core.JUSTIFY, caption)
+            for elem in results:
+                core.set_cell_text(table, row, col, 'Table List', '•\t' + elem)
+
     course, subject = context['course'], context['subject']
 
     # Уровни освоения
@@ -192,13 +201,6 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         start_row += len(levels)
 
     # Знать, уметь, владеть
-    def add_study_results(attr: str, caption: str, row: int, col: int) -> None:
-        """ Добавить в ячейку таблицы результаты обучения """
-        results = course.__getattribute__(attr)
-        if results:
-            core.set_cell_text(table, row, col, core.JUSTIFY, caption)
-            for elem in results:
-                core.set_cell_text(table, row, col, 'Table List', '•\t' + elem)
     start_row = 2
     table.cell(start_row, 2).merge(table.cell(start_row + rows_count - 1, 2))
     add_study_results('knowledges', 'Знать:', 2, 2)
@@ -280,8 +282,8 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
 
 
 def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, List[InlineImage]]:
-    """ 
-    Поиск картинок, типы которых перечислены в IMAGE_KINDS, например, 
+    """
+    Поиск картинок, типы которых перечислены в IMAGE_KINDS, например,
     литературы или титульных листов. Папки для поиска указывается в args
     """
     images = {}
@@ -298,7 +300,7 @@ def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Nam
             images[kind] += glob.glob(os.path.join(path, pic_subj[best[0]]+'*'))
             if best[1]/len(subject.name) < 0.4:
                 print(f'Найдены файл(ы) сканов ({kind}): ' + ' '.join(images[kind]))
-            elif best[1]/len(subject.name) <= 0.7: 
+            elif best[1]/len(subject.name) <= 0.7:
                 print(f'Подозрительный скан ({kind}): {best[0]}')
             else:
                 print(f'Подходящих сканов не найдено, наименее далекий по имени файл ({kind}): {best[0]}')
@@ -327,14 +329,14 @@ def main(args=None) -> None:
     links_before, links_after = plan.find_dependencies(subject, course)
     template = core.get_template('rpd.docx')
     images = get_images(template, subject, args)
-    
+
     context = {
         'course': course,
         'plan': plan,
         'subject': subject,
         'links_before': links_before,
         'links_after': links_after,
-    }    
+    }
     for kind in IMAGE_KINDS:
         context[kind + '_images'] = images[kind]
 
@@ -346,7 +348,7 @@ def main(args=None) -> None:
     remove_extra_table_5(template, context)
 
     template.render(context)
-    output_file = args.course.replace('.yaml', '.docx') 
+    output_file = args.course.replace('.yaml', '.docx')
     if args.output_file:
         output_file = args.output_file
         if not output_file.endswith('.docx'):
@@ -356,7 +358,7 @@ def main(args=None) -> None:
         print(f'Файл {output_file} успешно сохранен')
     except OSError:
         print(f'Ошибка при сохранении файла {output_file}!')
-    
+
 
 if __name__ == '__main__':
     main()

@@ -2,10 +2,10 @@
 import json
 import re
 import sys
-import traceback
 import unicodedata
 from copy import deepcopy
 from http import HTTPStatus
+from os.path import join
 from typing import Dict, List, Set, Tuple, Union, Any
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
@@ -59,6 +59,7 @@ def get_plan(plan_filename: str) -> 'EducationPlan':
     except ValueError:
         # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
         plan = plan_filename
+        import traceback
         traceback.print_stack()
     return plan
 
@@ -66,7 +67,7 @@ def get_plan(plan_filename: str) -> 'EducationPlan':
 def get_template(filename: str) -> DocxTemplate:
     """ Читаем шаблон РПД """
     try:
-        template = DocxTemplate(filename)
+        template = DocxTemplate(join('templates', filename))
     except OSError:
         print('Не могу открыть шаблон')
         sys.exit()
@@ -300,7 +301,7 @@ class Subject(Base):
 
     def get_courses(self) -> str:
         """ Получить курсы (годы) обучения """
-        semesters = [str((semester + 1) // 2) for semester in self.semesters.keys()]
+        semesters = [str((semester + 1) // 2) for semester in self.semesters]
         return ', '.join(sorted(set(semesters)))
 
     def get_hours(self, attr: str) -> int:
@@ -325,7 +326,7 @@ class Subject(Base):
 
     def get_semesters(self) -> str:
         """ Семестры в которые идет дисциплина """
-        semesters = [str(semester) for semester in self.semesters.keys()]
+        semesters = [str(semester) for semester in self.semesters]
         return ', '.join(sorted(semesters))
 
     def get_total_credits(self) -> int:

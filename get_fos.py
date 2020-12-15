@@ -1,6 +1,7 @@
 """ Генерация ФОС """
 import os
 import sys
+from argparse import ArgumentParser, Namespace
 from typing import Dict, List
 
 from docx import Document
@@ -20,7 +21,7 @@ def iterate_items(parent):
     if isinstance(parent, DocumentType):
         parent_elem = parent.element.body
     elif isinstance(parent, _Cell):
-        parent_elem = parent._tc
+        parent_elem = parent._tc  # pylint: disable=protected-access
     else:
         raise ValueError('Oops')
 
@@ -33,7 +34,7 @@ def iterate_items(parent):
 
 def get_section_paragraphs(input_filename: str, start_kw: List[str], final_kw: List[str]) -> List[str]:
     """ Извлечь список абзацев текста из docx-файла """
-    result, source = Document(), Document(input_filename)
+    source = Document(input_filename)
     started = False
     paragraphs = []
     for item in iterate_items(source):
@@ -53,20 +54,14 @@ def get_section_paragraphs(input_filename: str, start_kw: List[str], final_kw: L
 
 
 def get_rpd(name):
-    result = None
-    for fn in os.listdir('rpds'):
-        if fn.endswith('.docx'):
-            if name in fn:
-                result = os.path.join('rpds', fn)
+    """ Получить список имен файлов РПД """
+    result, base_dir = None, 'rpds'
+    for file_name in os.listdir(base_dir):
+        if file_name.endswith('.docx'):
+            if name in file_name:
+                result = os.path.join(base_dir, file_name)
                 break
     return result
-
-
-def check_args() -> None:
-    """ Проверка аргументов командной строки """
-    if len(sys.argv) != 3:
-        print('Синтаксис:\n\tpython {0} <руп> <фос>'.format(*sys.argv))
-        sys.exit()
 
 
 def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -122,30 +117,30 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
 def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение раздела 2.2 """
     marker = None
-    for p1 in template.get_docx().paragraphs:
+    for paragraph in template.get_docx().paragraphs:
         keywords = ['оценочные средства для', 'государственной итоговой аттестации']
-        if all(kw in p1.text.lower() for kw in keywords):
-            marker = p1
+        if all(kw in paragraph.text.lower() for kw in keywords):
+            marker = paragraph
             break
 
     plan: core.EducationPlan = context['plan']
     subjects = sorted(plan.subject_codes.values(), key=core.Subject.repr)
-    for s in subjects:
-        rpd = get_rpd(s.name)
+    for subj in subjects:
+        rpd = get_rpd(subj.name)
         if not rpd:
             continue
 
-        p2 = marker.insert_paragraph_before('%s %s' % (s.code, s.name))
-        p2.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        p2.paragraph_format.first_line_indent = Cm(0)
-        for r in p2.runs:
-            r.bold = True
+        paragraph = marker.insert_paragraph_before('%s %s' % (subj.code, subj.name))
+        paragraph.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        paragraph.paragraph_format.first_line_indent = Cm(0)
+        for run in paragraph.runs:
+            run.bold = True
 
         for item in iterate_items(Document(rpd)):
             if isinstance(item, Paragraph):
-                p3 = marker.insert_paragraph_before(item.text)
-                p3.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
-                p3.paragraph_format.first_line_indent = Cm(0)
+                paragraph = marker.insert_paragraph_before(item.text)
+                paragraph.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+                paragraph.paragraph_format.first_line_indent = Cm(0)
 
 
 def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -180,10 +175,9 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     core.fix_table_borders(table)
 
 
-def main() -> None:
+def main(args: Namespace) -> None:
     """ Точка входа """
-    check_args()
-    plan = core.get_plan(sys.argv[1])
+    plan = core.get_plan(args.plan)
     template = core.get_template('fos.docx')
     context = {
         'plan': plan,
@@ -192,9 +186,11 @@ def main() -> None:
     fill_table_2_1(template, context)
     fill_table_4(template, context)
     template.render(context)
-    template.save(sys.argv[2])
+    template.save(args.plan[:-4] + '.docx')
     print('Partially done')
 
 
 if __name__ == '__main__':
-    main()
+    parser = ArgumentParser()
+    parser.add_argument('plan', type=str, help='PLX-файл РУПа')
+    main(parser.parse_args())

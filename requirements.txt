@@ -2,7 +2,7 @@ beautifulsoup4
 docxtpl
 numpy
 pandas
+python-Levenshtein
 python-docx
 pyyaml
 requests
-python-Levenshtein
