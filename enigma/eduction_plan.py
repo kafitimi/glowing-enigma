@@ -1,6 +1,7 @@
 """
 Класс для данных рабочих учебных планов виде файлов *.plx
 """
+import sys
 from typing import Dict, List, Set, Tuple
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
@@ -304,3 +305,20 @@ class EducationPlan:
                     if last < min(semesters):
                         after.add('%s %s' % (cur_subj.code, cur_subj.name))
         return ', '.join(before), ', '.join(after)
+
+
+def get_plan(plan_filename: str) -> 'EducationPlan':
+    """ Читаем учебный план """
+    try:
+        if isinstance(plan_filename, EducationPlan):
+            raise ValueError()
+        plan = EducationPlan(plan_filename)
+    except OSError:
+        print('Не могу открыть учебный план %s' % plan_filename)
+        sys.exit()
+    except ValueError:
+        # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
+        plan = plan_filename
+        import traceback
+        traceback.print_stack()
+    return plan

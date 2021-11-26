@@ -7,30 +7,11 @@ from typing import Dict, List, NamedTuple
 from docx.table import Table
 from docxtpl import DocxTemplate
 
-from enigma import EducationPlan
-
 BACHELOR = 2
 MASTER = 3
 
 CENTER = 'Table Heading'
 JUSTIFY = 'Table Contents'
-
-
-def get_plan(plan_filename: str) -> 'EducationPlan':
-    """ Читаем учебный план """
-    try:
-        if isinstance(plan_filename, EducationPlan):
-            raise ValueError()
-        plan = EducationPlan(plan_filename)
-    except OSError:
-        print('Не могу открыть учебный план %s' % plan_filename)
-        sys.exit()
-    except ValueError:
-        # для пакетной работы: нам могут дать готовый EducationPlan, тогда не будем парсить
-        plan = plan_filename
-        import traceback
-        traceback.print_stack()
-    return plan
 
 
 def get_template(filename: str) -> DocxTemplate:

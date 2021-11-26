@@ -13,7 +13,7 @@ from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
 import core
-from enigma import EducationPlan
+from enigma import Competence, EducationPlan, Subject, get_plan
 
 
 def iterate_items(parent):
@@ -81,7 +81,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     table: Table = template.get_docx().tables[1]
 
     row_number = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number += 1
@@ -106,7 +106,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     rpd_dict = context['rpd_dict']
     table: Table = template.get_docx().tables[2]
     row_number1 = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number1 += 1
@@ -141,7 +141,7 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблицы в разделе 2.1 """
     plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[3]
-    for subject in sorted(plan.subject_codes.values(), key=core.Subject.repr):
+    for subject in sorted(plan.subject_codes.values(), key=Subject.repr):
         core.add_table_rows(table, 1)
         row_index = len(table.rows) - 1
         core.set_cell_text(table, row_index, 0, core.CENTER, subject.code)
@@ -159,7 +159,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
             break
 
     plan: EducationPlan = context['plan']
-    subjects = sorted(plan.subject_codes.values(), key=core.Subject.repr)
+    subjects = sorted(plan.subject_codes.values(), key=Subject.repr)
     for subj in subjects:
         rpd = get_rpd(subj.name)
         if not rpd:
@@ -183,14 +183,14 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[-1]
     row_number = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row_index = len(table.rows) - 1
         row_number += 1
         core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
         core.set_cell_text(table, row_index, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
         subjects = [plan.subject_codes[s] for s in competence.subjects]
-        for subject in sorted(subjects, key=core.Subject.repr):
+        for subject in sorted(subjects, key=Subject.repr):
             core.add_table_rows(table, 1)
             row_index = len(table.rows) - 1
             core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
@@ -251,7 +251,7 @@ def get_rpd_dict(plan: EducationPlan, rpd_dir: str) -> Dict[str, core.RPD]:
 
 def main(args: Namespace) -> None:
     """ Точка входа """
-    plan = core.get_plan(args.plan)
+    plan = get_plan(args.plan)
     rpd_dict = get_rpd_dict(plan, args.rpd_dir)
     template = core.get_template('fos.docx')
     context = {

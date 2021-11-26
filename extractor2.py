@@ -15,7 +15,8 @@ from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
 import core
-from enigma import EducationPlan
+from enigma import Competence, EducationPlan, Subject, get_plan
+from enigma.eduction_plan import CT_EXAM, CT_COURSEWORK, CT_CREDIT, CT_CREDIT_GRADE
 
 
 def iterate_items(parent):
@@ -75,10 +76,10 @@ def check_args() -> None:
 def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблиц с формами контроля """
     control_fancy_name = {
-        core.CT_EXAM: 'Экзамен',
-        core.CT_CREDIT_GRADE: 'Зачет с оценкой',
-        core.CT_CREDIT: 'Зачет',
-        core.CT_COURSEWORK: 'Курсовой проект',
+        CT_EXAM: 'Экзамен',
+        CT_CREDIT_GRADE: 'Зачет с оценкой',
+        CT_CREDIT: 'Зачет',
+        CT_COURSEWORK: 'Курсовой проект',
     }
 
     plan: EducationPlan = context['plan']
@@ -89,7 +90,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     table: Table = template.get_docx().tables[1]
 
     row_number = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number += 1
@@ -97,7 +98,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
         table.cell(row, 1).merge(table.cell(row, len(table.columns) - 1))
         subjects = [plan.subject_codes[s] for s in competence.subjects]
-        for subject in sorted(subjects, key=core.Subject.repr):
+        for subject in sorted(subjects, key=Subject.repr):
             core.add_table_rows(table, 1)
             row = len(table.rows) - 1
             row_number += 1
@@ -246,10 +247,10 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблиц с формами контроля """
     global fileslist 
     control_fancy_name = {
-        core.CT_EXAM: 'Экзамен',
-        core.CT_CREDIT_GRADE: 'Зачет с оценкой',
-        core.CT_CREDIT: 'Зачет',
-        core.CT_COURSEWORK: 'Курсовой проект',
+        CT_EXAM: 'Экзамен',
+        CT_CREDIT_GRADE: 'Зачет с оценкой',
+        CT_CREDIT: 'Зачет',
+        CT_COURSEWORK: 'Курсовой проект',
     }
 
     plan: EducationPlan = context['plan']
@@ -257,7 +258,7 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     fileslist = [filename[:-5] for filename in os.listdir('./rpds') if filename.endswith('.docx')]
 
     row_number = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number += 1
@@ -267,7 +268,7 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
             core.set_cell_text(table, row, runover, core.JUSTIFY, ' ')
         # table.cell(row, 1).merge(table.cell(row, len(table.columns) - 1))
         subjects = [plan.subject_codes[s] for s in competence.subjects]
-        for subject in sorted(subjects, key=core.Subject.repr):
+        for subject in sorted(subjects, key=Subject.repr):
             # core.add_table_rows(table, 1)
             # row = len(table.rows) - 1
             # len(table.rows) - 1
@@ -306,7 +307,7 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблицы в разделе 2.1 """
     plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[3]
-    for subject in sorted(plan.subject_codes.values(), key=core.Subject.repr):
+    for subject in sorted(plan.subject_codes.values(), key=Subject.repr):
         core.add_table_rows(table, 1)
         row_index = len(table.rows) - 1
         core.set_cell_text(table, row_index, 0, core.CENTER, subject.code)
@@ -437,10 +438,10 @@ def list2docx(fos_doc, ls, row, column):
 def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     global table_flazhok
     control_fancy_name = {
-        core.CT_EXAM: 'Экзамен',
-        core.CT_CREDIT_GRADE: 'Зачет с оценкой',
-        core.CT_CREDIT: 'Зачет',
-        core.CT_COURSEWORK: 'Курсовой проект',
+        CT_EXAM: 'Экзамен',
+        CT_CREDIT_GRADE: 'Зачет с оценкой',
+        CT_CREDIT: 'Зачет',
+        CT_COURSEWORK: 'Курсовой проект',
     }
 
     """ Заполнение раздела 2.2 """
@@ -457,7 +458,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     middle[1] += 'магистратуры' if plan.degree == core.MASTER else 'бакалавриата'
     middle[4] += plan.program
     middle[3] = plan.code + ' ' + plan.name
-    subjects = sorted(plan.subject_codes.values(), key=core.Subject.repr)
+    subjects = sorted(plan.subject_codes.values(), key=Subject.repr)
     for s in subjects:
         rpd = difflib.get_close_matches(s.code + ' ' + s.name, fileslist)
         if len(rpd) < 1:
@@ -521,14 +522,14 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[-1]
     row_number = 0
-    for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
+    for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
         core.add_table_rows(table, 1)
         row_index = len(table.rows) - 1
         row_number += 1
         core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
         core.set_cell_text(table, row_index, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
         subjects = [plan.subject_codes[s] for s in competence.subjects]
-        for subject in sorted(subjects, key=core.Subject.repr):
+        for subject in sorted(subjects, key=Subject.repr):
             core.add_table_rows(table, 1)
             row_index = len(table.rows) - 1
             core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
@@ -553,7 +554,7 @@ def main() -> None:
     check_args()
     global fileslist
 
-    plan = core.get_plan(sys.argv[1])
+    plan = get_plan(sys.argv[1])
     template = core.get_template('fos.docx')
     context = {
         'plan': plan,

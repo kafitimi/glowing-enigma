@@ -13,7 +13,7 @@ from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
 
 import core
-from enigma import Course, Competence, EducationPlan, Subject
+from enigma import Course, Competence, EducationPlan, Subject, get_plan
 from enigma.eduction_plan import CT_EXAM, CT_CREDIT, CT_CREDIT_GRADE
 
 IMAGE_KINDS = ('lit', 'title')
@@ -325,7 +325,7 @@ def main(args=None) -> None:
         parser.add_argument('-o', '--output_file', type=str, help='Название выходного файла docx')
         args = parser.parse_args()
 
-    plan = core.get_plan(args.plan)
+    plan = get_plan(args.plan)
     course = get_course(args.course)
     subject = get_subject(plan, course)
     links_before, links_after = plan.find_dependencies(subject, course)
