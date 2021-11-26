@@ -13,6 +13,7 @@ from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
 
 import core
+import enigma
 
 IMAGE_KINDS = ('lit', 'title')
 
@@ -45,17 +46,17 @@ def check_args() -> None:
         sys.exit()
 
 
-def get_course(course_filename: str) -> core.Course:
+def get_course(course_filename: str) -> enigma.Course:
     """ Открываем курс обучения """
     try:
-        course = core.Course(course_filename)
+        course = enigma.Course(course_filename)
     except OSError:
         print('Не могу открыть курс обучения' % course_filename)
         sys.exit()
     return course
 
 
-def get_subject(plan: core.EducationPlan, course: core.Course) -> core.Subject:
+def get_subject(plan: core.EducationPlan, course: enigma.Course) -> core.Subject:
     """ Ищем подходящую дисциплину в учебном плане """
     result = plan.find_subject(course.names)
     if result is None:
