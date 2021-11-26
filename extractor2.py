@@ -15,6 +15,7 @@ from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
 import core
+from enigma import EducationPlan
 
 
 def iterate_items(parent):
@@ -80,7 +81,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         core.CT_COURSEWORK: 'Курсовой проект',
     }
 
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     if plan.degree == core.BACHELOR:
         core.remove_table(template, 1)
     elif plan.degree == core.MASTER:
@@ -251,7 +252,7 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
         core.CT_COURSEWORK: 'Курсовой проект',
     }
 
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[2]
     fileslist = [filename[:-5] for filename in os.listdir('./rpds') if filename.endswith('.docx')]
 
@@ -303,7 +304,7 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблицы в разделе 2.1 """
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[3]
     for subject in sorted(plan.subject_codes.values(), key=core.Subject.repr):
         core.add_table_rows(table, 1)
@@ -452,7 +453,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
     global fileslist
     fileslist = [filename[:-5] for filename in os.listdir('./rpds') if filename[-4:] == 'docx']
 
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     middle[1] += 'магистратуры' if plan.degree == core.MASTER else 'бакалавриата'
     middle[4] += plan.program
     middle[3] = plan.code + ' ' + plan.name
@@ -517,7 +518,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
 
 def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение бланка "Лист сформированности компетенций" """
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[-1]
     row_number = 0
     for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):

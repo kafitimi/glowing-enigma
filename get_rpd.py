@@ -13,7 +13,8 @@ from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage
 
 import core
-import enigma
+from enigma import Course, Competence, EducationPlan, Subject
+from enigma.eduction_plan import CT_EXAM, CT_CREDIT, CT_CREDIT_GRADE
 
 IMAGE_KINDS = ('lit', 'title')
 
@@ -46,17 +47,17 @@ def check_args() -> None:
         sys.exit()
 
 
-def get_course(course_filename: str) -> enigma.Course:
+def get_course(course_filename: str) -> Course:
     """ Открываем курс обучения """
     try:
-        course = enigma.Course(course_filename)
+        course = Course(course_filename)
     except OSError:
         print('Не могу открыть курс обучения' % course_filename)
         sys.exit()
     return course
 
 
-def get_subject(plan: core.EducationPlan, course: enigma.Course) -> core.Subject:
+def get_subject(plan: EducationPlan, course: Course) -> Subject:
     """ Ищем подходящую дисциплину в учебном плане """
     result = plan.find_subject(course.names)
     if result is None:
@@ -72,7 +73,7 @@ def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
 
     row = 0
     competencies = [context['plan'].competence_codes[c] for c in context['subject'].competencies]
-    for competence in sorted(competencies, key=core.Competence.repr):
+    for competence in sorted(competencies, key=Competence.repr):
         row += 1
         core.set_cell_text(table, row, 0, core.CENTER, competence.category)
         core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
@@ -171,12 +172,12 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
     # Уровни освоения
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
-    if core.CT_EXAM in control:
+    if CT_EXAM in control:
         levels = [
             ('Высокий', 'Отлично'), ('Базовый', 'Хорошо'),
             ('Минимальный', 'Удовлетворительно'), ('Не освоены', 'Неудовлетворительно'),
         ]
-    elif core.CT_CREDIT_GRADE in control:
+    elif CT_CREDIT_GRADE in control:
         levels = [
             ('Высокий', 'Зачтено (отлично)'), ('Базовый', 'Не зачтено (хорошо)'),
             ('Минимальный', 'Зачтено (удовлетворительно)'), ('Не освоены', 'Не зачтено'),
@@ -214,7 +215,7 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         table.cell(start_row, 3).merge(table.cell(start_row + len(subject.competencies) - 1, 3))
         core.set_cell_text(table, start_row, 3, core.CENTER, level)
         table.cell(start_row, 4).merge(table.cell(start_row + len(subject.competencies) - 1, 4))
-        if core.CT_CREDIT in control:
+        if CT_CREDIT in control:
             if level == 'Освоено':
                 add_study_results('knowledge', 'Обучаемый знает:', start_row, 4)
                 add_study_results('abilities', 'Обучаемый умеет:', start_row, 4)
@@ -276,13 +277,13 @@ def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):
     subject = context['subject']
     control = [s.control for s in subject.semesters.values()]
     control = functools.reduce(lambda x, y: x + y if isinstance(x, list) else set.union(x, y), control)
-    if core.CT_EXAM in control:
+    if CT_EXAM in control:
         core.remove_table(template, credit_table)
     else:
         core.remove_table(template, exam_table)
 
 
-def get_images(template: DocxTemplate, subject: core.Subject, args: argparse.Namespace) -> Dict[str, List[InlineImage]]:
+def get_images(template: DocxTemplate, subject: Subject, args: argparse.Namespace) -> Dict[str, List[InlineImage]]:
     """
     Поиск картинок, типы которых перечислены в IMAGE_KINDS, например,
     литературы или титульных листов. Папки для поиска указывается в args

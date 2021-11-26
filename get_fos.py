@@ -13,6 +13,7 @@ from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
 import core
+from enigma import EducationPlan
 
 
 def iterate_items(parent):
@@ -72,7 +73,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     #     core.CT_COURSEWORK: 'Курсовой проект',
     # }
 
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     if plan.degree == core.BACHELOR:
         core.remove_table(template, 1)
     elif plan.degree == core.MASTER:
@@ -138,7 +139,7 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение таблицы в разделе 2.1 """
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[3]
     for subject in sorted(plan.subject_codes.values(), key=core.Subject.repr):
         core.add_table_rows(table, 1)
@@ -157,7 +158,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
             marker = paragraph
             break
 
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     subjects = sorted(plan.subject_codes.values(), key=core.Subject.repr)
     for subj in subjects:
         rpd = get_rpd(subj.name)
@@ -179,7 +180,7 @@ def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
 
 def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     """ Заполнение бланка "Лист сформированности компетенций" """
-    plan: core.EducationPlan = context['plan']
+    plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[-1]
     row_number = 0
     for competence in sorted(plan.competence_codes.values(), key=core.Competence.repr):
@@ -209,7 +210,7 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     core.fix_table_borders(table)
 
 
-def get_rpd_dict(plan: core.EducationPlan, rpd_dir: str) -> Dict[str, core.RPD]:
+def get_rpd_dict(plan: EducationPlan, rpd_dir: str) -> Dict[str, core.RPD]:
     result = {}
     for filename in os.listdir(rpd_dir):
         if filename.startswith('~'):
