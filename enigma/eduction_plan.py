@@ -89,13 +89,21 @@ class Competence(Indicator):
     @staticmethod
     def repr(competence: 'Competence'):
         """ Для передачи в качестве ключа сортировки """
+
+        def get_number(code: str) -> (int | str):
+            try:
+                res = int(code)
+            except ValueError:
+                res = code
+            return res
+
         result = 0, ''
         if competence.code.startswith('УК-'):
-            result = 1, int(competence.code[3:])
+            result = 1, get_number(competence.code[3:])
         elif competence.code.startswith('ОПК'):
-            result = 2, int(competence.code[4:])
+            result = 2, get_number(competence.code[4:])
         elif competence.code.startswith('ПК'):
-            result = 3, int(competence.code[3:])
+            result = 3, get_number(competence.code[3:])
         return result
 
 

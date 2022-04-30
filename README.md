@@ -25,6 +25,8 @@ os.chdir('glowing-enigma')
 !pip install -r requirements.txt
 ```
 
+В случае если не удается установить Python-Levenstein, то можно взять бинарные сборки [отсюда](https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-levenshtein).
+
 ## Генерация матрицы компетенций
 
 1. Скопируйте РУП в формате *.plx
