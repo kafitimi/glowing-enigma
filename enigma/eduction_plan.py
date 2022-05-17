@@ -93,6 +93,7 @@ class Competence(Indicator):
         def get_number(code: str) -> (int | str):
             try:
                 res = int(code)
+                res = f"{res:04d}"
             except ValueError:
                 res = code
             return res
