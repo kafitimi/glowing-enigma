@@ -1,21 +1,23 @@
 # LibreOffice
 .~lock.*
 
-# Данные
+# User data
 /db.sqlite3
 *.doc
 *.docx
+*.pdf
 *.plx
 *.txt
 *.yaml
+*.zip
 
-# Скомпилированные python-скрипты
+# Bytecode
 *.pyc
 
 # IDE
 .idea/
 .vscode/
 
-# Виртуальное окружение
+# Libraries
 node_modules/
 venv/
