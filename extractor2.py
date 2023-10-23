@@ -108,8 +108,6 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
                 controls = [control_fancy_name[c] for c in semester.control]
                 core.set_cell_text(table, row, number+1, core.CENTER, ', '.join(controls))
 
-    core.fix_table_borders(table)
-
 
 def table2list(x):
     """ Читает таблицу из РПД в список """
@@ -299,8 +297,6 @@ def fill_table_2(template: DocxTemplate, context: Dict[str, any]) -> None:
                         core.set_cell_text(table, row, 5, core.JUSTIFY, zuv_criteria[3])
                         core.set_cell_text(table, row, 6, core.JUSTIFY, zuv_criteria[4])
                     core.set_cell_text(table, row, 7, core.JUSTIFY, zuv_criteria[5])
-           
-    core.fix_table_borders(table)
 
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -312,7 +308,6 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         row_index = len(table.rows) - 1
         core.set_cell_text(table, row_index, 0, core.CENTER, subject.code)
         core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.name)
-    core.fix_table_borders(table)
 
 
 header = [
@@ -545,8 +540,6 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     row_index = len(table.rows) - 1
     core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
     core.set_cell_text(table, row_index, 1, core.JUSTIFY, 'НИР')
-
-    core.fix_table_borders(table)
 
 
 def main() -> None:

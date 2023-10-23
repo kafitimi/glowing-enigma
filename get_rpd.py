@@ -95,7 +95,6 @@ def fill_table_1_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
     add_study_results('knowledge', 'Знать:')
     add_study_results('abilities', 'Уметь:')
     add_study_results('skills', 'Владеть:')
-    core.fix_table_borders(table)
 
 
 def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
@@ -120,12 +119,11 @@ def fill_table_3_1(template: DocxTemplate, context: Dict[str, Any]) -> None:
     fill_table_column(table, 2, [0], themes + ['Всего часов'])
     fill_table_column(table, 2, [1], totals + [subject.get_total_hours()])
     fill_table_column(table, 2, [2], lectures + [sum(lectures)])
-    fill_table_column(table, 2, [4], practices + [sum(practices)])
-    fill_table_column(table, 2, [6], labworks + [sum(labworks)])
-    fill_table_column(table, 2, [10], controls + [sum(controls)])
-    fill_table_column(table, 2, [11], homeworks + [sum(homeworks)])
-    fill_table_column(table, 2, [3, 5, 7, 8, 9], [0] * (themes_count + 1))  # пустые значения
-    core.fix_table_borders(table)
+    fill_table_column(table, 2, [4], labworks + [sum(labworks)])
+    fill_table_column(table, 2, [6], practices + [sum(practices)])
+    fill_table_column(table, 2, [8], controls + [sum(controls)])
+    fill_table_column(table, 2, [9], homeworks + [sum(homeworks)])
+    fill_table_column(table, 2, [3, 5, 7], [0] * (themes_count + 1))  # пустые значения
 
 
 def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
@@ -153,7 +151,6 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, Any]) -> None:
     i += 1
     core.set_cell_text(table, i, 1, core.JUSTIFY, 'Всего часов')
     core.set_cell_text(table, i, 3, core.CENTER, str_or_dash(sum(homeworks)))
-    core.fix_table_borders(table)
 
 
 def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
@@ -245,8 +242,6 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         core.set_cell_text(table, start_row, 5, core.CENTER, grade)
         start_row += len(subject.competencies)
 
-    core.fix_table_borders(table)
-
 
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу со ссылками на литературу в разделе 7 """
@@ -261,14 +256,13 @@ def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
         for i, book in enumerate(books):
             core.set_cell_text(table, rows_count + i + 1, 0, core.CENTER, str(i + 1))
             core.set_cell_text(table, rows_count + i + 1, 1, core.CENTER, book['гост'])
-            core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book['гриф'])
-            core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book['экз'])
-            core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book['эбс'])
+            core.set_cell_text(table, rows_count + i + 1, 2, core.CENTER, book.get('гриф', '—'))
+            core.set_cell_text(table, rows_count + i + 1, 3, core.CENTER, book.get('экз', '—'))
+            core.set_cell_text(table, rows_count + i + 1, 4, core.CENTER, book.get('эбс', '—'))
 
     table = template.get_docx().tables[9]
     append_table_7_section('Основная литература', context['course'].primary_books)
     append_table_7_section('Дополнительная литература', context['course'].secondary_books)
-    core.fix_table_borders(table)
 
 
 def remove_extra_table_5(template: DocxTemplate, context: Dict[str, Any]):

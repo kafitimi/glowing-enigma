@@ -142,20 +142,20 @@ class Course:
 
         primary_books: Dict[str, Any] = data.get('основная литература', {})
         self.primary_books: List[Dict[str, Any]] = primary_books.get('ссылки', [])
-        if 'iprbooks' in primary_books:
-            iprbooks = primary_books['iprbooks']
-            if isinstance(iprbooks, dict):
-                append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
-            if isinstance(iprbooks, list):
-                for iprbook in iprbooks:
-                    append_iprbooks(self.primary_books, iprbook['запрос'], iprbook['количество'])
-        if 'лань' in primary_books:
-            lanbooks = primary_books['лань']
-            if isinstance(lanbooks, dict):
-                append_iprbooks(self.primary_books, lanbooks['запрос'], lanbooks['количество'])
-            if isinstance(lanbooks, list):
-                for lanbook in lanbooks:
-                    append_iprbooks(self.primary_books, lanbook['запрос'], lanbook['количество'])
+        # if 'iprbooks' in primary_books:
+        #     iprbooks = primary_books['iprbooks']
+        #     if isinstance(iprbooks, dict):
+        #         append_iprbooks(self.primary_books, iprbooks['запрос'], iprbooks['количество'])
+        #     if isinstance(iprbooks, list):
+        #         for iprbook in iprbooks:
+        #             append_iprbooks(self.primary_books, iprbook['запрос'], iprbook['количество'])
+        # if 'лань' in primary_books:
+        #     lanbooks = primary_books['лань']
+        #     if isinstance(lanbooks, dict):
+        #         append_iprbooks(self.primary_books, lanbooks['запрос'], lanbooks['количество'])
+        #     if isinstance(lanbooks, list):
+        #         for lanbook in lanbooks:
+        #             append_iprbooks(self.primary_books, lanbook['запрос'], lanbook['количество'])
 
         secondary_books: Dict[str, Any] = data.get('дополнительная литература', {})
         self.secondary_books: List[Dict[str, Any]] = secondary_books.get('ссылки', [])

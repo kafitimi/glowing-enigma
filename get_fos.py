@@ -101,7 +101,6 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
                             values = subject.code, subject.name
                             cell_components.append('%s %s' % values)
             core.set_cell_text(table, row, number + 1, core.CENTER, '\n'.join(cell_components))
-    core.fix_table_borders(table)
 
     rpd_dict = context['rpd_dict']
     table: Table = template.get_docx().tables[2]
@@ -134,7 +133,6 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
             core.set_cell_text(table, row, 4, core.JUSTIFY, zuv_raw)
             core.set_cell_text(table, row, 5, core.JUSTIFY, zuv_raw)
             core.set_cell_text(table, row, 6, core.JUSTIFY, zuv_raw)
-    core.fix_table_borders(table)
 
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -146,7 +144,6 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
         row_index = len(table.rows) - 1
         core.set_cell_text(table, row_index, 0, core.CENTER, subject.code)
         core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.name)
-    core.fix_table_borders(table)
 
 
 def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -206,8 +203,6 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     row_index = len(table.rows) - 1
     core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
     core.set_cell_text(table, row_index, 1, core.JUSTIFY, 'НИР')
-
-    core.fix_table_borders(table)
 
 
 def get_rpd_dict(plan: EducationPlan, rpd_dir: str) -> Dict[str, core.RPD]:
