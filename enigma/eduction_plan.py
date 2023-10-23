@@ -119,6 +119,7 @@ class Subject(Base):
     def __init__(self, elem: Element):
         super().__init__(key=elem.get('Код'), code=elem.get('ДисциплинаКод'))
         self.name: str = elem.get('Дисциплина')
+        self.parent: str = elem.get('КодРодителя')
         self.semesters: Dict[int, SemesterWork] = dict()
         self.competencies: Set[str] = set()
 
@@ -182,25 +183,7 @@ class Subject(Base):
     @staticmethod
     def repr(subject: 'Subject'):
         """ Для передачи в качестве ключа сортировки """
-        # TODO: Привести к единому типу данных
-        result = 0, ''
-        if subject.code.startswith('Б1.О.'):
-            result = 1, int(subject.code[5:])
-        elif subject.code.startswith('Б1.В.ДВ.'):
-            result = 3, float(subject.code[8:])
-        elif subject.code.startswith('Б1.В.'):
-            result = 2, int(subject.code[5:])
-        elif subject.code.startswith('Б1.В.ОД.'):
-            result = 2, int(subject.code[8:])
-        elif subject.code.startswith('Б2.'):
-            alphabet = '1234567890.'
-            code = filter(lambda c: c in alphabet, subject.code[3:])
-            result = 4, float(''.join(list(code)))
-        elif subject.code.startswith('Б3'):
-            result = 5, 0
-        elif subject.code.startswith('ФТД'):
-            result = 6, 0
-        return result
+        return subject.code.replace('.О.', '.0.').replace('.ОД.', '.0Д.')
 
 
 class EducationPlan:
@@ -268,19 +251,22 @@ class EducationPlan:
         """ Прочитать связи дисциплин с компетенциями """
         path = './{*}ПланыКомпетенцииДисциплины'
         for sub_elem in elem.findall(path):
-            subject = self.subject_keys[sub_elem.get('КодСтроки')]
-            key = sub_elem.get('КодКомпетенции')
-            if key in self.competence_keys:
-                # Нашли компетенцию по коду
-                competence = self.competence_keys.get(key)
-                competence.subjects.add(subject.code)
-                subject.competencies.add(competence.code)
-            else:
-                for competence in self.competence_keys.values():
-                    if key in competence.indicator_keys:
-                        # Нашли индикатор -> берем его компетенцию
-                        competence.subjects.add(subject.code)
-                        subject.competencies.add(competence.code)
+            k = sub_elem.get('КодСтроки')
+            subjects = [
+                s for s in self.subject_keys.values()
+                if s.key == k or s.parent == k
+            ]
+
+            k = sub_elem.get('КодКомпетенции')
+            competences = [
+                c for c in self.competence_keys.values()
+                if c.key == k or k in c.indicator_keys
+            ]
+
+            for subj in subjects:
+                for comp in competences:
+                    comp.subjects.add(subj.code)
+                    subj.competencies.add(comp.code)
 
     def find_subject(self, course_names: List[Set[str]]) -> Subject:
         """ Ищем дисциплину в учебном плане """
