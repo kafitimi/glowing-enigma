@@ -8,12 +8,6 @@ from xml.etree.ElementTree import Element
 
 from .course import Course
 
-NAMESPACES = {
-    'msdata': 'urn:schemas-microsoft-com:xml-msdata',
-    'diffgr': 'urn:schemas-microsoft-com:xml-diffgram-v1',
-    'mmisdb': 'http://tempuri.org/dsMMISDB.xsd',
-}
-
 HOURS_PER_CREDIT = 36
 
 HT_WORK = '1'
@@ -42,7 +36,7 @@ class Base:
         """ Получить словари с доступом по коду и шифру """
         dict1, dict2 = {}, {}
 
-        path = './{{{mmisdb}}}{0}'.format(elem_name, **NAMESPACES)
+        path = f'./{{*}}{elem_name}'
         for sub_elem in elem.findall(path):
 
             # Пропустим группу дисциплин
@@ -218,9 +212,9 @@ class EducationPlan:
 
     def __init__(self, filename: str):
         root = ElementTree.parse(filename).getroot()
-        plan = root.find('./{{{diffgr}}}diffgram/{{{mmisdb}}}dsMMISDB'.format(**NAMESPACES))
-        oop1 = plan.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
-        oop2 = oop1.find('./{{{mmisdb}}}ООП'.format(**NAMESPACES))
+        plan = root.find('./{*}diffgram/{*}dsMMISDB')
+        oop1 = plan.find('./{*}ООП')
+        oop2 = oop1.find('./{*}ООП')
         self.code: str = oop1.get('Шифр')
         self.name: str = oop1.get('Название')
         self.degree = int(oop1.get('Квалификация'))
@@ -233,11 +227,11 @@ class EducationPlan:
     def read_hours(self, elem: Element) -> None:
         """ Прочитать часы по дисциплинам """
         wt_abbr = {}
-        path = './{{{mmisdb}}}{0}'.format('СправочникВидыРабот', **NAMESPACES)
+        path = './{*}СправочникВидыРабот'
         for sub_elem in elem.findall(path):
             wt_abbr[sub_elem.get('Код')] = sub_elem.get('Аббревиатура')
 
-        path = './{{{mmisdb}}}{0}'.format('ПланыНовыеЧасы', **NAMESPACES)
+        path = './{*}ПланыНовыеЧасы'
         for sub_elem in elem.findall(path):
             if sub_elem.get('КодТипаЧасов') == HT_WORK:
                 if sub_elem.get('КодОбъекта') not in self.subject_keys:
@@ -272,7 +266,7 @@ class EducationPlan:
 
     def read_links(self, elem: Element) -> None:
         """ Прочитать связи дисциплин с компетенциями """
-        path = './{{{mmisdb}}}{0}'.format('ПланыКомпетенцииДисциплины', **NAMESPACES)
+        path = './{*}ПланыКомпетенцииДисциплины'
         for sub_elem in elem.findall(path):
             subject = self.subject_keys[sub_elem.get('КодСтроки')]
             key = sub_elem.get('КодКомпетенции')
