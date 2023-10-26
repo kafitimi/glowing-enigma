@@ -1,5 +1,5 @@
 """
-Класс для данных рабочих учебных планов виде файлов *.plx
+Классы для чтения рабочих учебных планов из файлов *.plx
 """
 import sys
 from typing import Dict, List, Set, Tuple
@@ -10,19 +10,25 @@ from .course import Course
 
 HOURS_PER_CREDIT = 36
 
-HT_WORK = '1'
+# Типы работ
+HT_REGULAR = '1'  # лекционный (обычные часы)
+HT_GROUP = '3'  # мелкогрупповой (подозрительная фигня)
+HT_PRACTICAL = '5'  # самостоятельная работа (практическая переподготовка)
 
+# Виды контроля
 CT_EXAM = 'Эк'
 CT_CREDIT_GRADE = 'ЗаО'
 CT_CREDIT = 'За'
 CT_COURSEWORK = 'КП'
 
-WT_LECTURE = 'Лек'
-WT_LABWORK = 'Лаб'
-WT_PRACTICE = 'Пр'
-WT_CONTROLS = 'КСР'
-WT_HOMEWORK = 'СР'
-WT_EXAMS = 'Контроль'
+WORK_TYPES = {
+    'Лек': 'lectures',
+    'Лаб': 'labworks',
+    'Пр': 'practices',
+    'СР': 'homeworks',
+    'КСР': 'controls',
+    'Контроль': 'exams',
+}
 
 
 class Base:
@@ -111,6 +117,15 @@ class SemesterWork:
         self.homeworks = 0  # самостоятельная работа студентов (СРС)
         self.controls = 0  # контроль самостоятельной работы (КСР)
         self.exams = 0  # часы на экзамен
+
+        # Пока прифигачим костыли
+        self.lectures_pp = 0  # лекции с ПП
+        self.labworks_pp = 0  # лабораторные работы с ПП
+        self.practices_pp = 0  # практические занятия с ПП
+        self.homeworks_pp = 0  # самостоятельная работа студентов (СРС) с ПП
+        self.controls_pp = 0  # контроль самостоятельной работы (КСР) с ПП
+        self.exams_pp = 0  # часы на экзамен с ПП
+
         self.control: Set[str] = set()  # формы контроля
 
 
@@ -147,6 +162,11 @@ class Subject(Base):
         """ Сумма часов определенного типа """
         return sum([semester.__getattribute__(attr) for semester in self.semesters.values()])
 
+    def get_hours_str(self, attr: str) -> str:
+        """ Сумма часов определенного типа для печати """
+        s = self.get_hours(attr)
+        return s if s else '—'
+
     def get_hours_123(self) -> str:
         """ Сумма часов аудиторной работы """
         hours1 = sum([semester.lectures for semester in self.semesters.values()])
@@ -180,6 +200,14 @@ class Subject(Base):
             result += semester.homeworks + semester.controls + semester.exams
         return result
 
+    def get_practical_hours(self):
+        """ Количество часов практической переподготовки """
+        result = 0
+        for semester in self.semesters.values():
+            result += semester.lectures_pp + semester.practices_pp + semester.labworks_pp
+            result += semester.homeworks_pp + semester.controls_pp + semester.exams_pp
+        return result
+
     @staticmethod
     def repr(subject: 'Subject'):
         """ Для передачи в качестве ключа сортировки """
@@ -207,45 +235,40 @@ class EducationPlan:
         self.read_hours(plan)
         self.read_links(plan)
 
-    def read_hours(self, elem: Element) -> None:
+    def read_hours(self, plan: Element) -> None:
         """ Прочитать часы по дисциплинам """
+
+        # Читаем справочник видов работ
         wt_abbr = {}
         path = './{*}СправочникВидыРабот'
-        for sub_elem in elem.findall(path):
-            wt_abbr[sub_elem.get('Код')] = sub_elem.get('Аббревиатура')
+        for work in plan.findall(path):
+            wt_abbr[work.get('Код')] = work.get('Аббревиатура')
 
         path = './{*}ПланыНовыеЧасы'
-        for sub_elem in elem.findall(path):
-            if sub_elem.get('КодТипаЧасов') == HT_WORK:
-                if sub_elem.get('КодОбъекта') not in self.subject_keys:
-                    continue
-                abbr = wt_abbr[sub_elem.get('КодВидаРаботы')]
-                self.read_work_hours(sub_elem, abbr)
-            else:
-                pass  # Нужно проверить другие типы часов
+        for hours in plan.findall(path):
 
-    def read_work_hours(self, elem: Element, work_type: str) -> None:
-        """ Прочитать рабочие часы по дисциплинам """
-        code: str = elem.get('КодОбъекта')
-        subject = self.subject_keys[code]
-        semester = 2 * (int(elem.get('Курс')) - 1) + int(elem.get('Семестр'))
-        if semester not in subject.semesters:
-            subject.semesters[semester] = SemesterWork()
-        obj = subject.semesters[semester]
-        if work_type == WT_LECTURE:
-            obj.lectures = int(elem.get('Количество'))
-        elif work_type == WT_LABWORK:
-            obj.labworks = int(elem.get('Количество'))
-        elif work_type == WT_PRACTICE:
-            obj.practices = int(elem.get('Количество'))
-        elif work_type == WT_CONTROLS:
-            obj.controls = int(elem.get('Количество'))
-        elif work_type == WT_HOMEWORK:
-            obj.homeworks = int(elem.get('Количество'))
-        elif work_type == WT_EXAMS:
-            obj.exams = int(elem.get('Количество'))
-        elif work_type in (CT_CREDIT, CT_CREDIT_GRADE, CT_EXAM, CT_COURSEWORK):
-            obj.control.add(work_type)
+            # Ищем предмет
+            subj_key = hours.get('КодОбъекта')
+            subject = self.subject_keys.get(subj_key)
+            if not subject:
+                continue
+
+            # Ищем семестр
+            sem_num = 2 * (int(hours.get('Курс')) - 1) + int(hours.get('Семестр'))
+            sem_work = subject.semesters.setdefault(sem_num, SemesterWork())
+
+            hours_num = int(hours.get('Количество'))
+            hours_type = hours.get('КодТипаЧасов')
+            work_type = wt_abbr[hours.get('КодВидаРаботы')]
+            attr = WORK_TYPES.get(work_type)
+
+            # Формы контроля
+            if work_type in (CT_CREDIT, CT_CREDIT_GRADE, CT_EXAM, CT_COURSEWORK):
+                sem_work.control.add(work_type)
+            elif hours_type == HT_REGULAR and attr:
+                sem_work.__setattr__(attr, hours_num)
+            elif hours_type == HT_PRACTICAL and attr:
+                sem_work.__setattr__(attr + '_pp', hours_num)
 
     def read_links(self, elem: Element) -> None:
         """ Прочитать связи дисциплин с компетенциями """

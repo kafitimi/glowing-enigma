@@ -13,7 +13,8 @@ from docx.text.paragraph import Paragraph
 from docxtpl import DocxTemplate
 
 import core
-from enigma import Competence, EducationPlan, Subject, get_plan
+from enigma import Competence, EducationPlan, Subject, get_plan, word_doc
+from enigma.word_doc import add_table_rows, set_cell_text
 
 
 def iterate_items(parent):
@@ -75,18 +76,18 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
 
     plan: EducationPlan = context['plan']
     if plan.degree == core.BACHELOR:
-        core.remove_table(template, 1)
+        word_doc.remove_table(template, 1)
     elif plan.degree == core.MASTER:
-        core.remove_table(template, 2)
+        word_doc.remove_table(template, 2)
     table: Table = template.get_docx().tables[1]
 
     row_number = 0
     for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
-        core.add_table_rows(table, 1)
+        add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number += 1
-        core.set_cell_text(table, row, 0, core.CENTER, str(row_number))
-        core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
+        set_cell_text(table, row, 0, word_doc.CENTER, str(row_number))
+        set_cell_text(table, row, 1, word_doc.JUSTIFY, competence.code + ' ' + competence.description)
         for number in range(1, 9 if plan.degree == core.BACHELOR else 5):
             cell_components = []
             subjects = [plan.subject_codes[s] for s in competence.subjects]
@@ -100,19 +101,19 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
                         else:
                             values = subject.code, subject.name
                             cell_components.append('%s %s' % values)
-            core.set_cell_text(table, row, number + 1, core.CENTER, '\n'.join(cell_components))
+            set_cell_text(table, row, number + 1, word_doc.CENTER, '\n'.join(cell_components))
 
     rpd_dict = context['rpd_dict']
     table: Table = template.get_docx().tables[2]
     row_number1 = 0
     for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
-        core.add_table_rows(table, 1)
+        add_table_rows(table, 1)
         row = len(table.rows) - 1
         row_number1 += 1
-        core.set_cell_text(table, row, 0, core.CENTER, str(row_number1))
-        core.set_cell_text(table, row, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
+        set_cell_text(table, row, 0, word_doc.CENTER, str(row_number1))
+        set_cell_text(table, row, 1, word_doc.JUSTIFY, competence.code + ' ' + competence.description)
         values = ['%s %s' % (k, v.description) for k, v in competence.indicator_codes.items()]
-        core.set_cell_text(table, row, 2, core.JUSTIFY, '\n'.join(values))
+        set_cell_text(table, row, 2, word_doc.JUSTIFY, '\n'.join(values))
         row_number2 = 0
         subjects = [plan.subject_codes[s] for s in competence.subjects]
         for subject in subjects:
@@ -124,15 +125,15 @@ def fill_table_1(template: DocxTemplate, context: Dict[str, any]) -> None:
                 zuv = rpd.competences.get(competence.code)
                 if zuv:
                     zuv_raw = zuv.raw
-            core.add_table_rows(table, 1)
+            add_table_rows(table, 1)
             row = len(table.rows) - 1
             row_number2 += 1
-            core.set_cell_text(table, row, 0, core.CENTER, '%d.%d' % (row_number1, row_number2))
-            core.set_cell_text(table, row, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
-            core.set_cell_text(table, row, 3, core.JUSTIFY, zuv_raw)
-            core.set_cell_text(table, row, 4, core.JUSTIFY, zuv_raw)
-            core.set_cell_text(table, row, 5, core.JUSTIFY, zuv_raw)
-            core.set_cell_text(table, row, 6, core.JUSTIFY, zuv_raw)
+            set_cell_text(table, row, 0, word_doc.CENTER, '%d.%d' % (row_number1, row_number2))
+            set_cell_text(table, row, 1, word_doc.JUSTIFY, subject.code + ' ' + subject.name)
+            set_cell_text(table, row, 3, word_doc.JUSTIFY, zuv_raw)
+            set_cell_text(table, row, 4, word_doc.JUSTIFY, zuv_raw)
+            set_cell_text(table, row, 5, word_doc.JUSTIFY, zuv_raw)
+            set_cell_text(table, row, 6, word_doc.JUSTIFY, zuv_raw)
 
 
 def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -140,10 +141,10 @@ def fill_table_2_1(template: DocxTemplate, context: Dict[str, any]) -> None:
     plan: EducationPlan = context['plan']
     table: Table = template.get_docx().tables[3]
     for subject in sorted(plan.subject_codes.values(), key=Subject.repr):
-        core.add_table_rows(table, 1)
+        add_table_rows(table, 1)
         row_index = len(table.rows) - 1
-        core.set_cell_text(table, row_index, 0, core.CENTER, subject.code)
-        core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.name)
+        set_cell_text(table, row_index, 0, word_doc.CENTER, subject.code)
+        set_cell_text(table, row_index, 1, word_doc.JUSTIFY, subject.name)
 
 
 def fill_section_2_2(template: DocxTemplate, context: Dict[str, any]) -> None:
@@ -181,28 +182,28 @@ def fill_table_4(template: DocxTemplate, context: Dict[str, any]) -> None:
     table: Table = template.get_docx().tables[-1]
     row_number = 0
     for competence in sorted(plan.competence_codes.values(), key=Competence.repr):
-        core.add_table_rows(table, 1)
+        add_table_rows(table, 1)
         row_index = len(table.rows) - 1
         row_number += 1
-        core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
-        core.set_cell_text(table, row_index, 1, core.JUSTIFY, competence.code + ' ' + competence.description)
+        set_cell_text(table, row_index, 0, word_doc.CENTER, str(row_number))
+        set_cell_text(table, row_index, 1, word_doc.JUSTIFY, competence.code + ' ' + competence.description)
         subjects = [plan.subject_codes[s] for s in competence.subjects]
         for subject in sorted(subjects, key=Subject.repr):
-            core.add_table_rows(table, 1)
+            add_table_rows(table, 1)
             row_index = len(table.rows) - 1
-            core.set_cell_text(table, row_index, 1, core.JUSTIFY, subject.code + ' ' + subject.name)
+            set_cell_text(table, row_index, 1, word_doc.JUSTIFY, subject.code + ' ' + subject.name)
 
-    core.add_table_rows(table, 1)
+    add_table_rows(table, 1)
     row_number += 1
     row_index = len(table.rows) - 1
-    core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
-    core.set_cell_text(table, row_index, 1, core.JUSTIFY, 'Практики')
+    set_cell_text(table, row_index, 0, word_doc.CENTER, str(row_number))
+    set_cell_text(table, row_index, 1, word_doc.JUSTIFY, 'Практики')
 
-    core.add_table_rows(table, 1)
+    add_table_rows(table, 1)
     row_number += 1
     row_index = len(table.rows) - 1
-    core.set_cell_text(table, row_index, 0, core.CENTER, str(row_number))
-    core.set_cell_text(table, row_index, 1, core.JUSTIFY, 'НИР')
+    set_cell_text(table, row_index, 0, word_doc.CENTER, str(row_number))
+    set_cell_text(table, row_index, 1, word_doc.JUSTIFY, 'НИР')
 
 
 def get_rpd_dict(plan: EducationPlan, rpd_dir: str) -> Dict[str, core.RPD]:
@@ -248,7 +249,7 @@ def main(args: Namespace) -> None:
     """ Точка входа """
     plan = get_plan(args.plan)
     rpd_dict = get_rpd_dict(plan, args.rpd_dir)
-    template = core.get_template('fos.docx')
+    template = word_doc.get_template('fos.docx')
     context = {
         'plan': plan,
         'rpd_dict': rpd_dict
