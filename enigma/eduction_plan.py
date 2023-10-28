@@ -253,21 +253,23 @@ class EducationPlan:
             if not subject:
                 continue
 
-            # Ищем семестр
             sem_num = 2 * (int(hours.get('Курс')) - 1) + int(hours.get('Семестр'))
-            sem_work = subject.semesters.setdefault(sem_num, SemesterWork())
-
             hours_num = int(hours.get('Количество'))
             hours_type = hours.get('КодТипаЧасов')
             work_type = wt_abbr[hours.get('КодВидаРаботы')]
             attr = WORK_TYPES.get(work_type)
 
-            # Формы контроля
             if work_type in (CT_CREDIT, CT_CREDIT_GRADE, CT_EXAM, CT_COURSEWORK):
+                # Форма контроля
+                sem_work = subject.semesters.setdefault(sem_num, SemesterWork())
                 sem_work.control.add(work_type)
             elif hours_type == HT_REGULAR and attr:
+                # Обычные часы
+                sem_work = subject.semesters.setdefault(sem_num, SemesterWork())
                 sem_work.__setattr__(attr, hours_num)
             elif hours_type == HT_PRACTICAL and attr:
+                # Практическая подготовка
+                sem_work = subject.semesters.setdefault(sem_num, SemesterWork())
                 sem_work.__setattr__(attr + '_pp', hours_num)
 
     def read_links(self, elem: Element) -> None:

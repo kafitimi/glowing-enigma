@@ -9,6 +9,8 @@
 *.plx
 *.txt
 *.yaml
+*.xls
+*.xlsx
 *.zip
 
 # Bytecode
