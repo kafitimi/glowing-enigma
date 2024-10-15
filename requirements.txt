@@ -1,8 +1,7 @@
-beautifulsoup4
 docxtpl
 numpy
 pandas
-# python-levenshtein-wheels
+python-levenshtein
 python-docx
 pyyaml
 requests
