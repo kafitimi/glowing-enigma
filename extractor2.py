@@ -16,7 +16,7 @@ from docxtpl import DocxTemplate
 
 import core
 from enigma import Competence, EducationPlan, Subject, get_plan, word_doc
-from enigma.eduction_plan import CT_EXAM, CT_COURSEWORK, CT_CREDIT, CT_CREDIT_GRADE
+from enigma.education_plan import CT_EXAM, CT_COURSEWORK, CT_CREDIT, CT_CREDIT_GRADE
 from enigma.word_doc import add_table_rows, set_cell_text
 
 

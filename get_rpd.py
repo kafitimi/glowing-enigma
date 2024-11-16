@@ -12,9 +12,8 @@ from docx.shared import Mm
 from docx.table import Table, _Row
 from docxtpl import DocxTemplate, InlineImage
 
-import core
 from enigma import Course, Competence, EducationPlan, Subject, get_plan, word_doc
-from enigma.eduction_plan import CT_EXAM, CT_CREDIT, CT_CREDIT_GRADE
+from enigma.education_plan import CT_EXAM, CT_CREDIT, CT_CREDIT_GRADE
 from enigma.word_doc import add_table_rows, set_cell_text
 
 IMAGE_KINDS = ('lit', 'title')
@@ -260,6 +259,45 @@ def fill_table_6_1(template: DocxTemplate, context: Dict[str, Any]):
         start_row += len(subject.competencies)
 
 
+def fill_table_6_2(template: DocxTemplate, context: Dict[str, Any]) -> None:
+    def add_study_results(attr: str, caption: str) -> None:
+        """ Добавить в ячейку таблицы результаты обучения """
+        results = context['course'].__getattribute__(attr)
+        if results:
+            set_cell_text(table, 1, 2, word_doc.JUSTIFY, caption)
+            for elem in results:
+                set_cell_text(table, 1, 2, 'Table List', '•\t' + elem)
+
+    table = template.get_docx().tables[9]
+    course = context['course']
+    subject = context['subject']
+    add_table_rows(table, len(subject.competencies))
+
+    # Компетенции и индикаторы
+    row = 0
+    competencies = [context['plan'].competence_codes[c] for c in context['subject'].competencies]
+    for competence in sorted(competencies, key=Competence.repr):
+        row += 1
+        set_cell_text(table, row, 0, word_doc.JUSTIFY, competence.code + ' ' + competence.description)
+        for ind_code in sorted(competence.indicator_codes):
+            indicator = competence.indicator_codes[ind_code]
+            set_cell_text(table, row, 1, word_doc.JUSTIFY, ind_code + ' ' + indicator.description)
+
+    # Знать, уметь, владеть
+    table.cell(1, 2).merge(table.cell(row, 2))
+    add_study_results('knowledge', 'Знать:')
+    add_study_results('abilities', 'Уметь:')
+    add_study_results('skills', 'Владеть:')
+
+    # Темы и задания
+    table.cell(1, 3).merge(table.cell(row, 3))
+    for t in course.themes:
+        set_cell_text(table, 1, 3, word_doc.CENTER, t['тема'])
+    table.cell(1, 4).merge(table.cell(row, 4))
+    # for c in course.controls:
+    #     set_cell_text(table, 1, 4, word_doc.JUSTIFY, c['содержание'])
+
+
 def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
     """ Заполняем таблицу со ссылками на литературу в разделе 7 """
     if context['lit_images']:
@@ -277,7 +315,7 @@ def fill_table_7(template: DocxTemplate, context: Dict[str, Any]) -> None:
             set_cell_text(table, rows_count + i + 1, 3, word_doc.CENTER, book.get('экз', '—'))
             set_cell_text(table, rows_count + i + 1, 4, word_doc.CENTER, book.get('эбс', '—'))
 
-    table = template.get_docx().tables[9]
+    table = template.get_docx().tables[10]
     append_table_7_section('Основная литература', context['course'].primary_books)
     append_table_7_section('Дополнительная литература', context['course'].secondary_books)
 
@@ -358,6 +396,7 @@ def main(args=None) -> None:
     fill_table_3_1(template, context)
     fill_table_4(template, context)
     fill_table_6_1(template, context)
+    fill_table_6_2(template, context)
     fill_table_7(template, context)
     remove_extra_table_5(template, context)
 

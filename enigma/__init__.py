@@ -1,2 +1,2 @@
 from .course import Course
-from .eduction_plan import Competence, EducationPlan, Subject, get_plan
+from .education_plan import Competence, EducationPlan, Subject, get_plan
